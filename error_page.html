@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yêu cầu bị chặn</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            text-align: center;
+            padding-top: 100px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .icon {
+            font-size: 60px;
+            color: #d9534f;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #d9534f;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .error-details {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">
+            &#x26A0; </div>
+        <h1>Yêu cầu của bạn đã bị chặn</h1>
+        <p>Hệ thống bảo vệ của chúng tôi đã phát hiện một yêu cầu đáng ngờ.</p>
+        <p>Vui lòng kiểm tra lại yêu cầu của bạn và thử lại.</p>
+        <div class="error-details">
+            Thông báo lỗi: <span id="error-message"></span>
+        </div>
+    </div>
+    <script>
+        // Lấy thông báo lỗi từ tham số URL và hiển thị
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorMessage = urlParams.get('msg');
+        if (errorMessage) {
+            document.getElementById('error-message').innerText = decodeURIComponent(errorMessage);
+        }
+    </script>
+</body>
+</html>
