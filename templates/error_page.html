@@ -50,19 +50,12 @@
         <div class="icon">
             &#x26A0; </div>
         <h1>Yêu cầu của bạn đã bị chặn</h1>
-        <p>Hệ thống bảo vệ của chúng tôi đã phát hiện một yêu cầu đáng ngờ.</p>
-        <p>Vui lòng kiểm tra lại yêu cầu của bạn và thử lại.</p>
-        <div class="error-details">
-            Thông báo lỗi: <span id="error-message"></span>
-        </div>
+            <p>Bạn đã lạm dụng hoặc gây lỗi hệ thống.</p>
+            <p>Nếu tiếp tục, bạn sẽ bị cấm vĩnh viễn khỏi hệ thống.</p>
+            <div class="error-details">
+                Nếu đây là lỗi, vui lòng liên hệ quản trị viên để được hỗ trợ.
+            </div>
     </div>
-    <script>
-        // Lấy thông báo lỗi từ tham số URL và hiển thị
-        const urlParams = new URLSearchParams(window.location.search);
-        const errorMessage = urlParams.get('msg');
-        if (errorMessage) {
-            document.getElementById('error-message').innerText = decodeURIComponent(errorMessage);
-        }
-    </script>
+
 </body>
 </html>
