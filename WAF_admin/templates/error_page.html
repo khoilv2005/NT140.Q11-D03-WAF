@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Blocked - You Shall Not Pass</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --black: #000;
+            --semi-black: #1a2130;
+            --white: #fff;
+            --dress: #ededed;
+            --dress-dark: #d4d4d4;
+            --sword: #e6e6e6;
+            --staff: #bf5507;
+            --skin: #ffd8ad;
+            --hair: #c2beb5;
+            --hair-dark: #ada99d;
+            --lips: pink;
+            --fire-1: #EFAC41;
+            --fire-2: #DE8531;
+            --fire-3: #6C1305;
+            --error-red: #d9534f;
+            --error-light: #f8d7da;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--black) 0%, var(--semi-black) 50%, #2a3142 100%);
+            color: var(--white);
+            text-align: center;
+            font-family: "Segoe UI", Roboto, Arial, sans-serif;
+            font-size: 1.1rem;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .particle:nth-child(1) { width: 60px; height: 60px; left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { width: 40px; height: 40px; left: 25%; animation-delay: 2s; }
+        .particle:nth-child(3) { width: 80px; height: 80px; left: 40%; animation-delay: 4s; }
+        .particle:nth-child(4) { width: 30px; height: 30px; left: 60%; animation-delay: 1s; }
+        .particle:nth-child(5) { width: 50px; height: 50px; left: 80%; animation-delay: 3s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10%, 90% { opacity: 1; }
+            50% { transform: translateY(-100px) rotate(180deg); }
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .gandalf {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 2rem auto;
+            animation: floating 3s infinite ease-in-out;
+        }
+
+        .gandalf div {
+            position: absolute;
+        }
+
+        .gandalf::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, var(--semi-black) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+        }
+
+        .fireball {
+            bottom: -10px;
+            left: 37px;
+            width: 225px;
+            height: 75px;
+            border-radius: 50%;
+            background: radial-gradient(ellipse, var(--fire-1) 0%, var(--fire-2) 30%, var(--fire-3) 60%, var(--black) 100%);
+            border: 3px solid var(--black);
+            animation: fireFlicker 0.5s infinite alternate;
+        }
+
+        @keyframes fireFlicker {
+            0% { opacity: 0.8; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+
+        .skirt {
+            bottom: 37px;
+            left: 75px;
+            border-bottom: 173px solid var(--dress);
+            border-left: 75px solid transparent;
+            border-right: 75px solid transparent;
+            filter: drop-shadow(0 0 6px var(--dress-dark));
+        }
+
+        .skirt::before {
+            content: "";
+            position: absolute;
+            background-color: var(--dress);
+            width: 75px;
+            height: 16px;
+            top: 173px;
+            left: 0px;
+            border-bottom-right-radius: 180%;
+            border-bottom-left-radius: 100%;
+        }
+
+        .skirt::after {
+            content: "";
+            position: absolute;
+            background-color: var(--dress);
+            width: 75px;
+            height: 21px;
+            top: 173px;
+            left: -75px;
+            border-bottom-right-radius: 80%;
+            border-bottom-left-radius: 180%;
+        }
+
+        .sleeves::before,
+        .sleeves::after {
+            content: "";
+            position: absolute;
+            border-bottom: 52px solid var(--dress);
+            filter: drop-shadow(0 0 6px var(--dress-dark));
+        }
+
+        .sleeves::before {
+            top: 97px;
+            left: 143px;
+            border-left: 75px solid transparent;
+            border-right: 30px solid transparent;
+            transform: rotate(-34deg);
+        }
+
+        .sleeves::after {
+            top: 95px;
+            left: 52px;
+            border-left: 30px solid transparent;
+            border-right: 75px solid transparent;
+            transform: rotate(41deg);
+        }
+
+        .shoulders {
+            background-color: var(--dress);
+            border-radius: 50%;
+            width: 75px;
+            height: 97px;
+            left: 112px;
+            top: 90px;
+        }
+
+        .hand {
+            width: 25px;
+            height: 19px;
+            border-radius: 50%;
+            background-color: var(--skin);
+            top: -4px;
+        }
+
+        .hand.left {
+            left: -52px;
+            transform: rotate(-20deg);
+        }
+
+        .hand.left::after {
+            content: "";
+            position: absolute;
+            background-color: var(--sword);
+            width: 94px;
+            height: 6px;
+            border-radius: 4px;
+            transform: rotate(-105deg);
+            transform-origin: bottom;
+            top: -36px;
+            left: -42px;
+            animation: swordGlow 2s infinite;
+        }
+
+        @keyframes swordGlow {
+            0%, 100% { box-shadow: 0 0 5px rgba(230, 230, 230, 0.5); }
+            50% { box-shadow: 0 0 15px rgba(230, 230, 230, 0.8); }
+        }
+
+        .hand.right {
+            right: -52px;
+            transform: rotate(20deg);
+        }
+
+        .hand.right::after {
+            content: "";
+            position: absolute;
+            background-color: var(--staff);
+            width: 187px;
+            height: 4px;
+            border-radius: 2px;
+            transform: rotate(-78deg);
+            transform-origin: left;
+            bottom: -75px;
+            left: 0;
+            animation: staffGlow 3s infinite;
+        }
+
+        @keyframes staffGlow {
+            0%, 100% { box-shadow: 0 0 3px rgba(191, 85, 7, 0.5); }
+            50% { box-shadow: 0 0 10px rgba(191, 85, 7, 0.8); }
+        }
+
+        .head {
+            width: 60px;
+            height: 67px;
+            top: 60px;
+            left: 120px;
+            background-color: var(--skin);
+            border-radius: 50%;
+        }
+
+        .head::before, .head::after {
+            content: "";
+            position: absolute;
+            background-color: var(--black);
+        }
+
+        .head::before {
+            width: 10px;
+            height: 4px;
+            border-radius: 3px;
+            top: 31px;
+            left: 16px;
+            transform: rotate(19deg);
+            animation: eyeBlink 4s infinite;
+        }
+
+        .head::after {
+            width: 10px;
+            height: 4px;
+            border-radius: 3px;
+            top: 31px;
+            right: 16px;
+            transform: rotate(-19deg);
+            animation: eyeBlink 4s infinite;
+        }
+
+        @keyframes eyeBlink {
+            0%, 90%, 100% { height: 4px; }
+            95% { height: 1px; }
+        }
+
+        .hair {
+            width: 52px;
+            height: 22px;
+            background-color: var(--hair);
+            border-radius: 50%;
+            top: 0px;
+            left: 4px;
+        }
+
+        .hair::before,
+        .hair::after {
+            content: "";
+            position: absolute;
+            background-color: var(--hair);
+            filter: drop-shadow(2px 5px 0 var(--hair-dark));
+        }
+
+        .hair::before {
+            top: 10px;
+            left: -12px;
+            width: 19px;
+            height: 75px;
+            border-top-left-radius: 34px;
+            border-top-right-radius: 15px;
+            border-bottom-left-radius: 100px;
+            border-bottom-right-radius: 20px;
+            transform: rotate(8deg);
+        }
+
+        .hair::after {
+            top: 10px;
+            right: -12px;
+            width: 19px;
+            height: 75px;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 34px;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 100px;
+            transform: rotate(-10deg);
+        }
+
+        .beard {
+            top: 48px;
+            left: 4px;
+            border-top: 60px solid var(--hair);
+            border-left: 26px solid transparent;
+            border-right: 26px solid transparent;
+            border-radius: 30px;
+            filter: drop-shadow(2px 5px 0 var(--hair-dark));
+        }
+
+        .beard::before {
+            content: "";
+            position: absolute;
+            background-color: var(--lips);
+            width: 15px;
+            height: 4px;
+            border-radius: 40%;
+            top: -52px;
+            left: -7px;
+        }
+
+        .message {
+            max-width: 800px;
+            margin: 3rem auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: slideInUp 1s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, var(--error-red), #ff6b6b, var(--fire-1));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: titleGlow 2s infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            0% { filter: drop-shadow(0 0 5px rgba(217, 83, 79, 0.5)); }
+            100% { filter: drop-shadow(0 0 15px rgba(217, 83, 79, 0.8)); }
+        }
+
+        .error-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .blocked-message, .gandalf-message {
+            padding: 1.5rem;
+            border-radius: 15px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .blocked-message {
+            background: linear-gradient(135deg, rgba(217, 83, 79, 0.1) 0%, rgba(248, 215, 218, 0.1) 100%);
+            border-left: 4px solid var(--error-red);
+        }
+
+        .gandalf-message {
+            background: linear-gradient(135deg, rgba(191, 85, 7, 0.1) 0%, rgba(239, 172, 65, 0.1) 100%);
+            border-left: 4px solid var(--staff);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .contact-btn {
+            margin-top: 2rem;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, var(--error-red) 0%, #c9302c 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(217, 83, 79, 0.3);
+        }
+
+        .contact-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(217, 83, 79, 0.4);
+            background: linear-gradient(135deg, #c9302c 0%, #ac2925 100%);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .gandalf {
+                width: 250px;
+                height: 250px;
+            }
+            
+            .error-content {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .message {
+                margin: 1rem;
+                padding: 1rem;
+            }
+        }
+
+        /* Lightning effect */
+        .lightning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            z-index: 5;
+            pointer-events: none;
+            animation: lightning 10s infinite;
+        }
+
+        @keyframes lightning {
+            0%, 95%, 100% { opacity: 0; }
+            96%, 98% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <div class="lightning"></div>
+
+    <div class="container">
+        <div class="gandalf">
+            <div class="fireball"></div>
+            <div class="skirt"></div>
+            <div class="sleeves"></div>
+            <div class="shoulders">
+                <div class="hand left"></div>
+                <div class="hand right"></div>
+            </div>
+            <div class="head">
+                <div class="hair"></div>
+                <div class="beard"></div>
+            </div>
+        </div>
+
+        <div class="message">
+            <h1>403 - You Shall Not Pass!</h1>
+            
+            <div class="error-content">
+                <div class="blocked-message">
+                    <h3>🚫 Yêu cầu bị chặn</h3>
+                    <p>Bạn đã lạm dụng hoặc gây lỗi hệ thống.</p>
+                    <p>Nếu tiếp tục, bạn sẽ bị cấm vĩnh viễn khỏi hệ thống.</p>
+                </div>
+                
+                <div class="gandalf-message">
+                    <h3>🧙‍♂️ Gandalf's Warning</h3>
+                    <p>Uh oh, Gandalf is blocking the way!</p>
+                    <p>Maybe you have a typo in the URL? Or you meant to go to a different location?</p>
+                </div>
+            </div>
+
+            <button class="contact-btn" onclick="showContactInfo()">
+                Liên hệ hỗ trợ / Contact Support
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Contact alert
+        function showContactInfo() {
+            alert('WAF System Alert!\n\nVietnamese: Chức năng liên hệ sẽ được triển khai trong phiên bản tiếp theo.\n\nEnglish: Contact functionality will be implemented in the next version.\n\nFor immediate assistance, please contact your system administrator.');
+        }
+
+        // Add random particles
+        function createRandomParticle() {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.width = (Math.random() * 30 + 20) + 'px';
+            particle.style.height = particle.style.width;
+            particle.style.animationDuration = (Math.random() * 4 + 6) + 's';
+            particle.style.animationDelay = Math.random() * 2 + 's';
+            
+            document.querySelector('.particles').appendChild(particle);
+            
+            setTimeout(() => {
+                particle.remove();
+            }, 10000);
+        }
+
+        // Create particles periodically
+        setInterval(createRandomParticle, 3000);
+
+        // Mouse parallax effect
+        document.addEventListener('mousemove', (e) => {
+            const gandalf = document.querySelector('.gandalf');
+            const x = (e.clientX / window.innerWidth - 0.5) * 20;
+            const y = (e.clientY / window.innerHeight - 0.5) * 20;
+            
+            gandalf.style.transform = `translate(${x}px, ${y}px)`;
+        });
+
+        // Keyboard interactions
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.body.style.animation = 'shake 0.5s ease-in-out';
+                setTimeout(() => {
+                    document.body.style.animation = '';
+                }, 500);
+            }
+        });
+
+        // Shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                75% { transform: translateX(5px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add click effect to Gandalf
+        document.querySelector('.gandalf').addEventListener('click', function() {
+            this.style.animation = 'none';
+            this.offsetHeight; // Trigger reflow
+            this.style.animation = 'floating 0.5s ease-out, floating 3s infinite ease-in-out 0.5s';
+        });
+    </script>
+</body>
+</html>
