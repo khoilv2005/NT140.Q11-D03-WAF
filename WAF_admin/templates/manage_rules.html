@@ -15,7 +15,27 @@
         form { margin-top: 2em; padding: 1.5em; border: 1px solid #dee2e6; border-radius: 8px; }
         form input[type="text"], form input[type="number"], form select { width: 100%; padding: 0.5em; margin-bottom: 1em; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         form button { padding: 0.7em 1.5em; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .btn-delete { background-color: #dc3545; padding: 0.4em 0.8em; font-size: 12px; color: white; }
+        .btn-delete { 
+            background-color: #dc3545; 
+            padding: 0.5em 1em; 
+            font-size: 13px; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: all 0.3s ease;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+        }
+        .btn-delete:hover {
+            background-color: #c82333;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        }
+        .btn-delete:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -45,8 +65,10 @@
                     <td>{{ rule.operator }}</td>
                     <td style="word-break: break-all;">{{ rule.value }}</td>
                     <td>
-                        <form action="{{ url_for('delete_rule', rule_id=rule.id) }}" method="post" onsubmit="return confirm('Are you sure you want to delete rule {{ rule.id }}?');">
-                            <button type="submit" class="btn-delete">Delete</button>
+                        <form action="{{ url_for('delete_rule', rule_id=rule.id) }}" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa rule {{ rule.id }}?');" style="display: inline;">
+                            <button type="submit" class="btn-delete" title="Xóa rule này">
+                                🗑️ Delete
+                            </button>
                         </form>
                     </td>
                 </tr>
