@@ -15,7 +15,7 @@ except ImportError:
     sys.exit(1)
 
 # --- Cấu hình ---
-WAF_RESET_URL = "http://127.0.0.1:8080/reset-rules"
+WAF_RESET_URL = "http://127.0.0.1:8080/reset-db-management"
 LISTEN_HOST = "0.0.0.0"
 LISTEN_PORT = 5000
 

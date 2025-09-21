@@ -31,6 +31,10 @@
             font-size: 1em;
             color: #6c757d;
         }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
         /* --- KẾT THÚC CSS THỐNG KÊ --- */
 
         table { width: 100%; border-collapse: collapse; margin-top: 1em; }
@@ -58,10 +62,12 @@
                 <div class="value" style="color: #dc3545;">{{ stats.blocked_requests }}</div>
                 <div class="label">🚫 Requests Bị Chặn</div>
             </div>
-            <div class="stat-card">
-                <div class="value" style="color: #007bff;">{{ stats.active_rules }}</div>
-                <div class="label">🛡️ Rules Đang Hoạt Động</div>
-            </div>
+            <a href="/manage-rules" style="text-decoration: none; color: inherit;">
+                <div class="stat-card" style="cursor: pointer; transition: all 0.3s ease;">
+                    <div class="value" style="color: #007bff;">{{ stats.active_rules }}</div>
+                    <div class="label">🛡️ Rule Đang Hoạt Động</div>
+                </div>
+            </a>
             <div class="stat-card">
                 <div class="value" style="color: #6c757d;">{{ stats.blacklisted_ips }}</div>
                 <div class="label">⛔ IP Trong Blacklist</div>
