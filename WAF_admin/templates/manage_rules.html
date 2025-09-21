@@ -76,6 +76,30 @@
             <br><br>
             <button type="submit">Add Rule</button>
         </form>
+
+        <form action="{{ url_for('import_rules') }}" method="post" enctype="multipart/form-data">
+    <h2>Import Rules from JSON</h2>
+    <input type="file" name="rule_file" accept=".json" required>
+    <br><br>
+    <button type="submit">Import File</button>
+</form>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for category, message in messages %}
+      <li class="{{ category }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<style>
+    .flashes { list-style-type: none; padding: 0; margin-top: 1em; }
+    .flashes li { padding: 0.75em; border-radius: 4px; }
+    .flashes .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .flashes .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+</style>
     </div>
 </body>
 </html>

@@ -1,7 +1,7 @@
 import sys
 import os
 import requests
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, flash, json
 
 # Thêm thư mục gốc của dự án vào Python Path để có thể import từ 'shared'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -20,7 +20,7 @@ LISTEN_HOST = "0.0.0.0"
 LISTEN_PORT = 5000
 
 app = Flask(__name__)
-
+app.secret_key = "super_secret_key_123" 
 # --- Các hàm tiện ích ---
 def notify_waf_to_reset():
     """Gửi một request đến WAF để yêu cầu nó tải lại rule."""
@@ -133,6 +133,75 @@ def delete_rule(rule_id):
 
     return redirect(url_for('manage_rules'))
 
+
+@app.route('/import-rules', methods=['POST'])
+def import_rules():
+    if request.remote_addr not in ['127.0.0.1', '192.168.232.1', '::1']:
+        return render_template('error_403.html'), 403
+
+    # 1. Kiểm tra file upload
+    if 'rule_file' not in request.files:
+        flash('No file part in the request.', 'error')
+        return redirect(url_for('manage_rules'))
+    
+    file = request.files['rule_file']
+    if file.filename == '':
+        flash('No file selected for uploading.', 'error')
+        return redirect(url_for('manage_rules'))
+
+    if file and file.filename.endswith('.json'):
+        session = SessionLocal()
+        try:
+            # 2. Đọc và phân tích file JSON
+            content = file.read().decode('utf-8')
+            rules_from_json = json.loads(content)
+            
+            if not isinstance(rules_from_json, list):
+                raise ValueError("JSON content must be a list of rules.")
+
+            added_count = 0
+            skipped_count = 0
+
+            # 3. Thêm rule vào DB
+            for rule_data in rules_from_json:
+                # Kiểm tra xem rule ID đã tồn tại chưa
+                existing_rule = session.query(Rule).get(rule_data.get('id'))
+                if existing_rule:
+                    skipped_count += 1
+                    continue # Bỏ qua nếu đã có
+                
+                new_rule = Rule(
+                    id=rule_data.get('id'),
+                    enabled=rule_data.get('enabled', True),
+                    description=rule_data.get('description'),
+                    severity=rule_data.get('severity', 'MEDIUM'),
+                    target=rule_data.get('target'),
+                    operator=rule_data.get('operator'),
+                    value=rule_data.get('value'),
+                    action=rule_data.get('action', 'BLOCK')
+                )
+                session.add(new_rule)
+                added_count += 1
+            
+            session.commit()
+            flash(f'Successfully imported {added_count} new rules. Skipped {skipped_count} existing rules.', 'success')
+            
+            # 4. Gửi tín hiệu cho WAF
+            if added_count > 0:
+                notify_waf_to_reset()
+
+        except json.JSONDecodeError:
+            flash('Invalid JSON format in the uploaded file.', 'error')
+            session.rollback()
+        except Exception as e:
+            flash(f'An error occurred: {e}', 'error')
+            session.rollback()
+        finally:
+            session.close()
+    else:
+        flash('Invalid file type. Please upload a .json file.', 'error')
+
+    return redirect(url_for('manage_rules'))
 # --- Main ---
 if __name__ == "__main__":
     print(f"\n[INFO] Admin Panel (ORM Edition) is running on http://{LISTEN_HOST}:{LISTEN_PORT}")
