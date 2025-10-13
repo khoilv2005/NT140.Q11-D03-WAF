@@ -41,13 +41,6 @@ WAF_RULES = []
 IP_BLACKLIST = set()
 
 # --- Các hàm DB (sử dụng SQLAlchemy ORM) ---
-def model_to_dict(model_instance):
-    """Hàm tiện ích để chuyển đổi một object SQLAlchemy thành dictionary."""
-    d = {}
-    for column in model_instance.__table__.columns:
-        d[column.name] = getattr(model_instance, column.name)
-    return d
-
 def load_cache_from_db():
     """Tải tất cả rule và IP blacklist từ DB vào cache trong bộ nhớ."""
     global WAF_RULES, IP_BLACKLIST
@@ -97,7 +90,6 @@ def add_ip_to_blacklist(ip, rule_id):
             session.add(new_blacklist_entry)
             session.commit()
             logger.info(f"IP {ip} has been added to the blacklist.")
-            # Gọi trực tiếp hàm load cache để cập nhật ngay lập tức
             logger.info("Auto-ban triggered cache reload.")
             load_cache_from_db()
     except Exception as e:
@@ -110,69 +102,75 @@ def check_and_auto_block(ip, rule_id):
     """Kiểm tra lịch sử vi phạm của IP và tự động chặn nếu cần."""
     session = SessionLocal()
     try:
+        # Đếm số lần bị BLOCKED trước đó của IP này
         block_count = session.query(ActivityLog).filter_by(client_ip=ip, action_taken='BLOCKED').count()
         logger.info(f"IP {ip} has {block_count} previous blocks. Threshold is {BLOCK_THRESHOLD}.")
-        if block_count >= BLOCK_THRESHOLD:
+        # Chú ý: so sánh với >= vì lần vi phạm hiện tại chưa được ghi vào log
+        if block_count >= BLOCK_THRESHOLD - 1:
             add_ip_to_blacklist(ip, rule_id)
     except Exception as e:
         logger.error(f"Could not check auto-block status for IP {ip}: {e}")
     finally:
         session.close()
 
-# --- Logic WAF ---
+# --- Logic WAF (ĐÃ SỬA LỖI) ---
 def inspect_request_flask(req):
     if req.remote_addr in IP_BLACKLIST:
         return "IP_BLACKLIST"
 
-    # Lấy request body một lần để tái sử dụng
-    request_body_bytes = req.get_data(cache=True)
+    # Lấy các phần của request một lần để tái sử dụng
+    request_body_str = req.get_data(as_text=True, cache=True)
+    query_string_str = req.query_string.decode('utf-8', 'ignore')
+    all_form_args = req.form.to_dict()
+    all_query_args = req.args.to_dict()
 
     for rule in WAF_RULES:
-        # 1. THU THẬP DỮ LIỆU: Luôn đưa dữ liệu cần kiểm tra vào một danh sách
-        targets_to_check = []
-        rule_target = rule.get('target')
+        targets_to_check = set() # Dùng set để tránh kiểm tra trùng lặp
+        rule_targets = rule.get('target', '').split('|')
 
-        if rule_target == 'URL_PATH':
-            targets_to_check.append(req.path)
-        elif rule_target == 'URL_QUERY':
-            targets_to_check.append(req.query_string.decode('utf-8', 'ignore'))
-        elif rule_target and 'HEADERS:' in rule_target:
-            header_name = rule_target.split(':', 1)[1]
-            targets_to_check.append(req.headers.get(header_name, ''))
-        elif rule_target == 'BODY':
-            targets_to_check.append(request_body_bytes.decode('utf-8', 'ignore'))
-        elif rule_target in ('ARGS', 'ARGS_NAMES'):
-            all_args = req.args.to_dict()
-            all_args.update(req.form.to_dict())
-            if rule_target == 'ARGS':
-                targets_to_check.extend(all_args.values())
-            else: # ARGS_NAMES
-                targets_to_check.extend(all_args.keys())
-        elif rule_target == 'FILENAME':
-            if req.files:
-                targets_to_check.extend([file.filename for file in req.files.values() if file.filename])
+        # 1. TÁCH CHUỖI TARGET VÀ THU THẬP DỮ LIỆU
+        for target_part in rule_targets:
+            if target_part in ('URL_PATH', 'REQUEST_URI'):
+                targets_to_check.add(req.path)
+            elif target_part == 'URL_QUERY':
+                targets_to_check.add(query_string_str)
+            elif 'HEADERS:' in target_part:
+                header_name = target_part.split(':', 1)[1]
+                targets_to_check.add(req.headers.get(header_name, ''))
+            elif target_part == 'BODY':
+                targets_to_check.add(request_body_str)
+            elif target_part == 'ARGS':
+                targets_to_check.update(all_query_args.values())
+                targets_to_check.update(all_form_args.values())
+            elif target_part == 'ARGS_NAMES':
+                targets_to_check.update(all_query_args.keys())
+                targets_to_check.update(all_form_args.keys())
+            elif target_part == 'FILENAME':
+                if req.files:
+                    targets_to_check.update([file.filename for file in req.files.values() if file.filename])
 
-        # 2. XỬ LÝ DỮ LIỆU: Chỉ cần MỘT vòng lặp duy nhất
+        # 2. XỬ LÝ VÀ KIỂM TRA DỮ LIỆU
         for item in targets_to_check:
             if not item:
                 continue
 
-            # Áp dụng deep decode để lọc dữ liệu
             decoded_data, decode_log = deep_decode_data(str(item))
             
-            # (Tùy chọn) In log giải mã nếu cần
             if len(decode_log) > 2:
                 logger.info(f"[DECODE] Rule {rule['id']}: '{item}' -> '{decoded_data}'")
 
-            # Kiểm tra rule với dữ liệu đã được decode
             match = False
-            if rule['operator'] == 'CONTAINS' and rule['value'] in decoded_data:
+            # Chấp nhận cả REGEX và REGEX_MATCH để tương thích
+            operator = rule.get('operator')
+            value = rule.get('value')
+            
+            if operator == 'CONTAINS' and value in decoded_data:
                 match = True
-            elif rule['operator'] == 'REGEX' and re.search(rule['value'], decoded_data, re.IGNORECASE):
+            elif operator in ('REGEX', 'REGEX_MATCH') and re.search(value, decoded_data, re.IGNORECASE):
                 match = True
             
             if match:
-                logger.warning(f"[MATCH] Rule {rule['id']} on decoded data: '{decoded_data}'")
+                logger.warning(f"[MATCH] Rule {rule['id']} ('{rule['description']}') triggered on decoded data: '{decoded_data}'")
                 return f"RULE_ID: {rule['id']}"
             
     return None
@@ -184,25 +182,39 @@ def reverse_proxy(path):
     block_reason = inspect_request_flask(request)
     if block_reason:
         logger.warning(f"Denied request from IP {request.remote_addr}. Reason: {block_reason}")
-        rule_id = int(re.search(r'\d+', block_reason).group()) if 'RULE_ID' in block_reason else None
         
+        rule_id = None
+        if 'RULE_ID' in block_reason:
+            try:
+                rule_id = int(re.search(r'\d+', block_reason).group())
+            except (AttributeError, ValueError):
+                pass
+        
+        # Ghi log trước khi kiểm tra auto-block
         log_event_to_db(request.remote_addr, request.method, request.full_path, 403, 'BLOCKED', rule_id)
-        check_and_auto_block(request.remote_addr, rule_id)
+        if rule_id:
+            check_and_auto_block(request.remote_addr, rule_id)
         
         return render_template('error_403.html'), 403
+        
     try:
         headers = {key: value for (key, value) in request.headers if key.lower() != 'host'}
         headers['Host'] = urlparse(BACKEND_ADDRESS).netloc
         backend_url = f'{BACKEND_ADDRESS}/{path}'
         if request.query_string:
             backend_url += '?' + request.query_string.decode('utf-8')
+            
         resp = requests.request(
             method=request.method, url=backend_url, headers=headers,
             data=request.get_data(), cookies=request.cookies, allow_redirects=False, timeout=10)
+            
         log_event_to_db(request.remote_addr, request.method, request.full_path, resp.status_code, 'ALLOWED')
+        
         excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
         resp_headers = [(name, value) for (name, value) in resp.raw.headers.items() if name.lower() not in excluded_headers]
+        
         return Response(resp.content, resp.status_code, resp_headers)
+        
     except requests.exceptions.RequestException as e:
         logger.error(f"Could not connect to backend: {e}")
         log_event_to_db(request.remote_addr, request.method, request.full_path, 502, 'ERROR')
