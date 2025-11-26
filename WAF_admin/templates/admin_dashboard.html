@@ -85,6 +85,12 @@
         .category-file-upload { background-color: #17a2b8; }
         .category-rate-limiting { background-color: #28a745; }
         .category-custom { background-color: #6c757d; }
+        .category-injection { background-color: #e83e8c; }
+        /* New categories */
+        .category-scanner-bot { background-color: #20c997; }              /* tương tự Bot Protection */
+        .category-protocol-manipulation { background-color: #007bff; }    /* xanh dương */
+        .category-ssti { background-color: #6f42c1; }                     /* tím */
+        .category-lfi-rce { background-color: #343a40; }                  /* xám đậm */
     </style>
 </head>
 <body>
@@ -120,7 +126,7 @@
         <div class="category-stats">
             {% for category_stat in stats.category_stats %}
             <div class="category-item">
-                <span class="category-badge category-{{ category_stat.category.lower().replace(' ', '-') }}">
+                <span class="category-badge category-{{ category_stat.category.lower().replace(' ', '-').replace('/', '-') }}">
                     {{ category_stat.category }}
                 </span>
                 <span class="category-count">{{ category_stat.count }} rules</span>
@@ -144,17 +150,17 @@
             <tbody>
                 {% for log in logs %}
                 <tr>
-                    <td>{{ log.timestamp }}</td>
-                    <td>{{ log.client_ip }}</td>
-                    <td>{{ log.request_method }}</td>
-                    <td style="word-break: break-all;">{{ log.request_path }}</td>
+                    <td>{{ log.timestamp | e }}</td>
+                    <td>{{ log.client_ip | e }}</td>
+                    <td>{{ log.request_method | e }}</td>
+                    <td style="word-break: break-all;">{{ log.request_path | e }}</td>
                     <td>
                         <span class="status-{{ log.action_taken.lower() }}">
-                            {{ log.action_taken }}
+                            {{ log.action_taken | e }}
                         </span>
                     </td>
-                    <td>{{ log.status_code }}</td>
-                    <td>{{ log.triggered_rule_id if log.triggered_rule_id is not none else 'N/A' }}</td>
+                    <td>{{ log.status_code | e }}</td>
+                    <td>{{ (log.triggered_rule_id if log.triggered_rule_id is not none else 'N/A') | e }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -249,7 +255,8 @@
 
             const h2 = document.querySelector('h2');
             if (h2) {
-                h2.innerHTML = 'Activity Log' + filterText;
+                h2.textContent = 'Activity Log' + filterText.replace(/<[^>]*>/g, ''); // Strip HTML tags for textContent
+                h2.innerHTML = 'Activity Log' + filterText; // Use innerHTML for styling
             }
         }
 
@@ -302,6 +309,20 @@
             paginationContainer.innerHTML = paginationHtml;
         }
 
+        // HTML escape function to prevent XSS
+        function escapeHtml(unsafe) {
+            // Handle null, undefined, and non-string values
+            if (unsafe === null || unsafe === undefined) {
+                return 'N/A';
+            }
+            return String(unsafe)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         function updateLogTable(newLogs) {
             const tbody = document.querySelector('table tbody');
             if (tbody && newLogs && newLogs.length > 0) {
@@ -315,17 +336,17 @@
 
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${log.timestamp}</td>
-                        <td>${log.client_ip}</td>
-                        <td>${log.request_method}</td>
-                        <td style="word-break: break-all;">${log.request_path}</td>
+                        <td>${escapeHtml(log.timestamp)}</td>
+                        <td>${escapeHtml(log.client_ip)}</td>
+                        <td>${escapeHtml(log.request_method)}</td>
+                        <td style="word-break: break-all;">${escapeHtml(log.request_path)}</td>
                         <td>
                             <span class="status-${log.action_taken.toLowerCase()}">
-                                ${log.action_taken}
+                                ${escapeHtml(log.action_taken)}
                             </span>
                         </td>
-                        <td>${log.status_code}</td>
-                        <td>${log.triggered_rule_id || 'N/A'}</td>
+                        <td>${escapeHtml(log.status_code)}</td>
+                        <td>${escapeHtml(log.triggered_rule_id || 'N/A')}</td>
                     `;
 
                     // Just track new logs without highlighting

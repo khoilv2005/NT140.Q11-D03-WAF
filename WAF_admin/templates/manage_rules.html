@@ -90,6 +90,12 @@
         .category-rate-limiting { background-color: #28a745; }
         .category-custom { background-color: #6c757d; }
         .category-nosql-injection { background-color: #ff6b35; }
+        .category-injection { background-color: #e83e8c; }
+        /* New categories */
+        .category-scanner-bot { background-color: #20c997; }              /* tương tự Bot Protection */
+        .category-protocol-manipulation { background-color: #007bff; }    /* xanh dương */
+        .category-ssti { background-color: #6f42c1; }                     /* tím */
+        .category-lfi-rce { background-color: #343a40; }                  /* xám đậm */
         .flashes { list-style-type: none; padding: 0; margin-top: 1em; }
         .flashes li { padding: 0.75em; border-radius: 4px; margin-bottom: 0.5em; }
         .flashes .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -111,7 +117,8 @@
                     <th>Target</th>
                     <th>Operator</th>
                     <th style="width: 25%;">Value</th>
-                    <th>Action</th>
+                    <th>Rule Action</th>
+                    <th>Delete</th>
                 </tr>
             </thead>
             <tbody>
@@ -120,10 +127,11 @@
                     <td>{{ rule.id }}</td>
                     <td>{{ 'Yes' if rule.enabled else 'No' }}</td>
                     <td>{{ rule.description }}</td>
-                    <td><span class="category-badge category-{{ rule.category.lower().replace(' ', '-') }}">{{ rule.category }}</span></td>
+                    <td><span class="category-badge category-{{ rule.category.lower().replace(' ', '-').replace('/', '-') }}">{{ rule.category }}</span></td>
                     <td>{{ rule.target }}</td>
                     <td>{{ rule.operator }}</td>
                     <td style="word-break: break-all;">{{ rule.value }}</td>
+                    <td>{{ rule.action }}</td>
                     <td>
                         <form action="{{ url_for('delete_rule', rule_id=rule.id) }}" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa rule {{ rule.id }}?');" style="display: inline; margin: 0; padding: 0; border: none;">
                             <button type="submit" class="btn-delete" title="Xóa rule này">
@@ -146,9 +154,14 @@
             <select name="category" required>
                 <option value="" disabled selected>Select Category</option>
                 <option value="SQL Injection">SQL Injection</option>
+                <option value="NoSQL Injection">NoSQL Injection</option>
                 <option value="XSS">Cross-Site Scripting (XSS)</option>
                 <option value="Bot Protection">Bot Protection</option>
+                <option value="Scanner/Bot">Scanner/Bot</option>
+                <option value="Protocol Manipulation">Protocol Manipulation</option>
+                <option value="SSTI">SSTI (Server-Side Template Injection)</option>
                 <option value="Path Traversal">Path Traversal</option>
+                <option value="LFI/RCE">LFI/RCE</option>
                 <option value="Command Injection">Command Injection</option>
                 <option value="File Upload">File Upload</option>
                 <option value="Rate Limiting">Rate Limiting</option>
@@ -173,6 +186,11 @@
                 <option value="REGEX">REGEX</option>
             </select>
             <input type="text" name="value" placeholder="Value to match (e.g., BadBot)" required>
+            <select name="rule_action" required>
+                <option value="BLOCK" selected>BLOCK (block request)</option>
+                <option value="LOG">LOG (only log, do not block)</option>
+                <option value="ALLOW">ALLOW (explicit allow)</option>
+            </select>
             <label><input type="checkbox" name="enabled" checked> Enabled</label>
             <br><br>
             <button type="submit">Add Rule</button>
@@ -183,6 +201,18 @@
             <input type="file" name="rule_file" accept=".json" required>
             <br><br>
             <button type="submit">Import File</button>
+        </form>
+
+        <form action="{{ url_for('delete_all_rules') }}" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA HẾT tất cả rules hiện tại?');">
+            <h2>Xóa toàn bộ rules</h2>
+            <p>Nút này chỉ xóa <strong>rules</strong>, không xóa logs và blacklist IP.</p>
+            <button type="submit" style="background-color:#ffc107; color:#212529;">Xóa tất cả rules</button>
+        </form>
+
+        <form action="{{ url_for('reset_all_data') }}" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA TOÀN BỘ dữ liệu WAF (rules, blacklist, logs)? Hành động này không thể hoàn tác.');">
+            <h2>Danger Zone</h2>
+            <p><strong>Cảnh báo:</strong> Nút này sẽ xóa <strong>tất cả Rules, Blacklist IP và Logs</strong> trong database.</p>
+            <button type="submit" style="background-color:#dc3545;">Reset toàn bộ database WAF</button>
         </form>
 
         {% with messages = get_flashed_messages(with_categories=true) %}

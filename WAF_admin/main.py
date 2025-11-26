@@ -23,7 +23,6 @@ load_dotenv()
 WAF_RESET_URL = os.getenv("WAF_RESET_URL", "http://127.0.0.1:8080/reset-db-management")
 LISTEN_HOST = os.getenv("ADMIN_LISTEN_HOST", "0.0.0.0")
 LISTEN_PORT = int(os.getenv("ADMIN_LISTEN_PORT", "5000"))
-ADMIN_ALLOWED_IPS = os.getenv("ADMIN_ALLOWED_IPS", "127.0.0.1,192.168.232.1,::1").split(',')
 
 app = Flask(__name__)
 app.secret_key = os.getenv("ADMIN_SECRET_KEY", "super_secret_key_123") 
@@ -44,10 +43,6 @@ def notify_waf_to_reset():
 # Route cho Dashboard Chính
 @app.route('/')
 def admin_dashboard():
-    # Giới hạn chỉ cho localhost và IP được phép truy cập
-    if request.remote_addr not in ADMIN_ALLOWED_IPS:
-        return render_template('error_403.html'), 403
-
     session = SessionLocal()
     try:
         total_requests = session.query(ActivityLog).count()
@@ -90,10 +85,6 @@ def admin_dashboard():
 # API Route cho latest logs (AJAX endpoint) với pagination
 @app.route('/api/logs/latest')
 def api_logs_latest():
-    # Giới hạn chỉ cho localhost và IP được phép truy cập
-    if request.remote_addr not in ADMIN_ALLOWED_IPS:
-        return jsonify({'error': 'Access denied'}), 403
-
     session = SessionLocal()
     try:
         # Get pagination and filter parameters
@@ -116,12 +107,19 @@ def api_logs_latest():
         total_logs = base_query.count()
         logger.info(f"Total logs with filter {action_filter}: {total_logs}")
 
-        # Calculate pagination
+        # Tính offset cho phân trang chuẩn
+        if page < 1:
+            page = 1
         offset = (page - 1) * per_page
 
-        # Get logs with pagination and filter
-        logs = base_query.order_by(ActivityLog.timestamp.desc()).offset(offset).limit(per_page).all()
-        logger.info(f"Retrieved {len(logs)} logs for page {page}")
+        logs = (
+            base_query
+            .order_by(ActivityLog.timestamp.desc())
+            .offset(offset)
+            .limit(per_page)
+            .all()
+        )
+        logger.info(f"Retrieved {len(logs)} logs (latest first) for page {page} (offset={offset})")
 
         # Get current statistics
         all_total_requests = session.query(ActivityLog).count()
@@ -153,12 +151,13 @@ def api_logs_latest():
         }
 
         # Pagination info
+        total_pages = (total_logs + per_page - 1) // per_page if total_logs > 0 else 1
         pagination_info = {
             'current_page': page,
             'per_page': per_page,
             'total_logs': total_logs,
-            'total_pages': (total_logs + per_page - 1) // per_page,
-            'has_next': page * per_page < total_logs,
+            'total_pages': total_pages,
+            'has_next': page < total_pages,
             'has_prev': page > 1
         }
 
@@ -177,9 +176,6 @@ def api_logs_latest():
 # Route để XEM danh sách rule
 @app.route('/manage-rules')
 def manage_rules():
-    if request.remote_addr not in ADMIN_ALLOWED_IPS:
-        return render_template('error_403.html'), 403
-    
     session = SessionLocal()
     try:
         rules = session.query(Rule).order_by(Rule.id).all()
@@ -194,11 +190,14 @@ def manage_rules():
 # Route để THÊM rule mới
 @app.route('/add-rule', methods=['POST'])
 def add_rule():
-    if request.remote_addr not in ADMIN_ALLOWED_IPS:
-        return render_template('error_403.html'), 403
-        
     session = SessionLocal()
     try:
+        # Chuẩn hóa action từ form
+        raw_action = request.form.get('rule_action', 'BLOCK')
+        action = str(raw_action).upper()
+        if action not in ('BLOCK', 'LOG', 'ALLOW'):
+            action = 'BLOCK'
+
         new_rule = Rule(
             id=int(request.form['id']),
             description=request.form['description'],
@@ -208,7 +207,7 @@ def add_rule():
             value=request.form['value'],
             enabled='enabled' in request.form,
             severity='MEDIUM', # Gán giá trị mặc định
-            action='BLOCK'     # Gán giá trị mặc định
+            action=action
         )
         session.add(new_rule)
         session.commit()
@@ -228,9 +227,6 @@ def add_rule():
 # Route để XÓA một rule
 @app.route('/delete-rule/<int:rule_id>', methods=['POST'])
 def delete_rule(rule_id):
-    if request.remote_addr not in ADMIN_ALLOWED_IPS:
-        return render_template('error_403.html'), 403
-        
     session = SessionLocal()
     try:
         rule_to_delete = session.query(Rule).get(rule_id)
@@ -253,11 +249,32 @@ def delete_rule(rule_id):
     return redirect(url_for('manage_rules'))
 
 
+@app.route('/delete-all-rules', methods=['POST'])
+def delete_all_rules():
+    """
+    Xóa toàn bộ rules hiện tại, giữ nguyên logs và blacklist.
+    Sau đó yêu cầu WAF reload lại cache rules từ DB.
+    """
+    session = SessionLocal()
+    try:
+        deleted_rules = session.query(Rule).delete()
+        session.commit()
+
+        flash(f'Deleted {deleted_rules} rules from database.', 'success')
+
+        # Cho WAF reload lại rules từ DB
+        notify_waf_to_reset()
+    except Exception as e:
+        logger.error(f"Could not delete all rules: {e}")
+        flash('Failed to delete all rules. Please check logs.', 'error')
+        session.rollback()
+    finally:
+        session.close()
+
+    return redirect(url_for('manage_rules'))
+
 @app.route('/import-rules', methods=['POST'])
 def import_rules():
-    if request.remote_addr not in ADMIN_ALLOWED_IPS:
-        return render_template('error_403.html'), 403
-
     # 1. Kiểm tra file upload
     if 'rule_file' not in request.files:
         flash('No file part in the request.', 'error')
@@ -295,7 +312,19 @@ def import_rules():
                 if missing_fields:
                     flash(f'Rule with ID {rule_data.get("id", "unknown")} is missing required fields: {", ".join(missing_fields)}', 'error')
                     continue
-                
+
+                # Chuẩn hóa và validate action
+                raw_action = rule_data.get('action', 'BLOCK')
+                action = str(raw_action).upper()
+                allowed_actions = {'BLOCK', 'LOG', 'ALLOW'}
+                if action not in allowed_actions:
+                    # Nếu giá trị không hợp lệ, fallback về BLOCK và ghi log cảnh báo
+                    logger.warning(
+                        f"Rule ID {rule_data.get('id')} has invalid action '{raw_action}', "
+                        "falling back to 'BLOCK'."
+                    )
+                    action = 'BLOCK'
+
                 # Kiểm tra xem rule ID đã tồn tại chưa
                 existing_rule = session.query(Rule).get(rule_data.get('id'))
                 if existing_rule:
@@ -311,7 +340,7 @@ def import_rules():
                     target=rule_data.get('target'),
                     operator=rule_data.get('operator'),
                     value=rule_data.get('value'),
-                    action=rule_data.get('action', 'BLOCK')
+                    action=action
                 )
                 session.add(new_rule)
                 added_count += 1
@@ -342,9 +371,6 @@ def import_rules():
 # Route để hiển thị danh sách IP trong blacklist
 @app.route('/blacklist')
 def view_blacklist():
-    if request.remote_addr not in ADMIN_ALLOWED_IPS:
-        return render_template('error_403.html'), 403
-
     session = SessionLocal()
     try:
         # Lấy danh sách IP trong blacklist với thông tin chi tiết
@@ -386,9 +412,6 @@ def view_blacklist():
 # Route để xóa IP khỏi blacklist
 @app.route('/remove-from-blacklist/<string:ip_address>', methods=['POST'])
 def remove_from_blacklist(ip_address):
-    if request.remote_addr not in ADMIN_ALLOWED_IPS:
-        return render_template('error_403.html'), 403
-
     session = SessionLocal()
     try:
         ip_to_remove = session.query(IPBlacklist).filter_by(ip_address=ip_address).first()
@@ -419,6 +442,37 @@ def remove_from_blacklist(ip_address):
     return redirect(url_for('view_blacklist'))
 
 
+@app.route('/reset-all-data', methods=['POST'])
+def reset_all_data():
+    """
+    Xóa toàn bộ dữ liệu WAF: Rules, ActivityLog, IPBlacklist
+    và yêu cầu WAF reload cache từ DB trống.
+    """
+    session = SessionLocal()
+    try:
+        # Xóa log hoạt động trước (để tránh FK constraint nếu có)
+        deleted_logs = session.query(ActivityLog).delete()
+        deleted_blacklist = session.query(IPBlacklist).delete()
+        deleted_rules = session.query(Rule).delete()
+        session.commit()
+
+        flash(
+            f'Reset database successfully: '
+            f'{deleted_rules} rules, {deleted_blacklist} blacklisted IPs, {deleted_logs} logs deleted.',
+            'success'
+        )
+
+        # Thông báo cho WAF reload cache (sẽ load DB trống)
+        notify_waf_to_reset()
+    except Exception as e:
+        logger.error(f"Could not reset all WAF data: {e}")
+        flash('Failed to reset database. Please check logs.', 'error')
+        session.rollback()
+    finally:
+        session.close()
+
+    return redirect(url_for('manage_rules'))
+
 # --- Main ---
 if __name__ == "__main__":
     # Initialize database first
@@ -427,5 +481,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     logger.info(f"Admin Panel is running on http://{LISTEN_HOST}:{LISTEN_PORT}")
-    logger.info(f"Allowed IPs: {', '.join(ADMIN_ALLOWED_IPS)}")
     app.run(host=LISTEN_HOST, port=LISTEN_PORT)

@@ -32,13 +32,13 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      DATABASE_URL: mysql+mysqlconnector://waf:wafadmin@mysql:3306/wafdb
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      WAF_LISTEN_HOST: ${WAF_LISTEN_HOST:-0.0.0.0}
-      WAF_LISTEN_PORT: ${WAF_LISTEN_PORT:-8080}
-      WAF_BACKEND_ADDRESS: ${WAF_BACKEND_ADDRESS:-http://host.docker.internal:8888}
-      WAF_BLOCK_THRESHOLD: ${WAF_BLOCK_THRESHOLD:-100000}
-      ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-127.0.0.1,192.168.1.1,172.18.0.1,::1}
+      DATABASE_URL: ${DATABASE_URL}
+      LOG_LEVEL: ${LOG_LEVEL}
+      WAF_LISTEN_HOST: ${WAF_LISTEN_HOST}
+      WAF_LISTEN_PORT: ${WAF_LISTEN_PORT}
+      WAF_BACKEND_ADDRESS: ${WAF_BACKEND_ADDRESS}
+      WAF_BLOCK_THRESHOLD: ${WAF_BLOCK_THRESHOLD}
+      ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS}
     ports:
       - "8080:8080"
     depends_on:
@@ -61,13 +61,13 @@ services:
     container_name: waf_admin
     restart: unless-stopped
     environment:
-      DATABASE_URL: mysql+mysqlconnector://waf:wafadmin@mysql:3306/wafdb
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      ADMIN_LISTEN_HOST: ${ADMIN_LISTEN_HOST:-0.0.0.0}
-      ADMIN_LISTEN_PORT: ${ADMIN_LISTEN_PORT:-5000}
+      DATABASE_URL: ${DATABASE_URL}
+      LOG_LEVEL: ${LOG_LEVEL}
+      ADMIN_LISTEN_HOST: ${ADMIN_LISTEN_HOST}
+      ADMIN_LISTEN_PORT: ${ADMIN_LISTEN_PORT}
       ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY}
-      ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-127.0.0.1,192.168.1.1,172.18.0.1,::1}
-      WAF_RESET_URL: ${WAF_RESET_URL:-http://waf_app:8080/reset-db-management}
+      ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS}
+      WAF_RESET_URL: ${WAF_RESET_URL}
     ports:
       - "5000:5000"
     depends_on:

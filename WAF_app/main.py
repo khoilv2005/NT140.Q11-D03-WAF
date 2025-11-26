@@ -2,6 +2,8 @@ import sys
 import os
 import requests
 import re
+import json
+import ipaddress
 from flask import Flask, request, Response, render_template, jsonify
 from urllib.parse import urlparse
 
@@ -98,6 +100,83 @@ def add_ip_to_blacklist(ip, rule_id):
     finally:
         session.close()
 
+# --- STRUCTURED DATA PARSING FUNCTIONS ---
+def parse_structured_data(data):
+    """Parse JSON/XML data to extract all values for inspection."""
+    parsed_values = []
+
+    # Try JSON parsing
+    try:
+        json_obj = json.loads(data)
+        parsed_values.extend(_extract_values_from_dict(json_obj))
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # Try XML parsing (simple regex-based)
+    xml_tags = re.findall(r'<([^!/?][^>]*)>([^<]*)</\1>', data)
+    for tag, content in xml_tags:
+        parsed_values.append(content.strip())
+
+    return parsed_values
+
+def _extract_values_from_dict(obj):
+    """Recursively extract all values from a nested dict/list structure."""
+    values = []
+
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            # Add both keys and values for comprehensive checking
+            values.append(str(key))
+            if isinstance(value, (dict, list)):
+                values.extend(_extract_values_from_dict(value))
+            else:
+                values.append(str(value))
+    elif isinstance(obj, list):
+        for item in obj:
+            if isinstance(item, (dict, list)):
+                values.extend(_extract_values_from_dict(item))
+            else:
+                values.append(str(item))
+    else:
+        values.append(str(obj))
+
+    return values
+
+def evaluate_operator(operator, value, target):
+    """Evaluate different types of operators for rule matching."""
+    try:
+        if operator == 'CONTAINS':
+            return value in target
+        elif operator in ('REGEX', 'REGEX_MATCH'):
+            return bool(re.search(value, target, re.IGNORECASE))
+        elif operator == '@eq':  # Equal
+            return str(target) == str(value)
+        elif operator == '@gt':  # Greater than
+            return float(target) > float(value)
+        elif operator == '@lt':  # Less than
+            return float(target) < float(value)
+        elif operator == '@ipMatch':  # IP/CIDR matching
+            try:
+                target_ip = ipaddress.ip_address(str(target))
+                value_ips = value.split(',')
+                for val_ip in value_ips:
+                    val_ip = val_ip.strip()
+                    if '/' in val_ip:  # CIDR notation
+                        if target_ip in ipaddress.ip_network(val_ip, strict=False):
+                            return True
+                    else:  # Single IP
+                        if target_ip == ipaddress.ip_address(val_ip):
+                            return True
+                return False
+            except (ValueError, ipaddress.AddressValueError):
+                return False
+        else:
+            logger.warning(f"Unknown operator: {operator}")
+            return False
+    except (ValueError, TypeError) as e:
+        logger.debug(f"Operator evaluation error for {operator}: {e}")
+        return False
+
 def check_and_auto_block(ip, rule_id):
     """Kiểm tra lịch sử vi phạm của IP và tự động chặn nếu cần."""
     session = SessionLocal()
@@ -125,7 +204,7 @@ def inspect_request_flask(req):
     all_query_args = req.args.to_dict()
 
     for rule in WAF_RULES:
-        targets_to_check = set() # Dùng set để tránh kiểm tra trùng lặp
+        targets_to_check = set()  # Dùng set để tránh kiểm tra trùng lặp
         rule_targets = rule.get('target', '').split('|')
 
         # 1. TÁCH CHUỖI TARGET VÀ THU THẬP DỮ LIỆU
@@ -134,6 +213,9 @@ def inspect_request_flask(req):
                 targets_to_check.add(req.path)
             elif target_part == 'URL_QUERY':
                 targets_to_check.add(query_string_str)
+            elif target_part == 'HEADERS':
+                # Kiểm tra toàn bộ giá trị header (dùng cho các rule tổng quát trên header)
+                targets_to_check.update(req.headers.values())
             elif 'HEADERS:' in target_part:
                 header_name = target_part.split(':', 1)[1]
                 targets_to_check.add(req.headers.get(header_name, ''))
@@ -148,6 +230,30 @@ def inspect_request_flask(req):
             elif target_part == 'FILENAME':
                 if req.files:
                     targets_to_check.update([file.filename for file in req.files.values() if file.filename])
+            # --- NEW TARGETS ---
+            elif target_part == 'COOKIES':
+                # Kiểm tra giá trị của tất cả cookie
+                targets_to_check.update(req.cookies.values())
+            elif target_part == 'COOKIES_NAMES':
+                # Kiểm tra tên cookie
+                targets_to_check.update(req.cookies.keys())
+            elif target_part == 'REQUEST_METHOD':
+                targets_to_check.add(req.method.upper())
+            elif target_part == 'REQUEST_PROTOCOL':
+                targets_to_check.add(req.environ.get('SERVER_PROTOCOL', 'HTTP/1.1'))
+            elif target_part == 'FILES_CONTENT':
+                # Kiểm tra nội dung file upload (cẩn thận với file lớn)
+                if req.files:
+                    for file in req.files.values():
+                        if file.filename:
+                            try:
+                                # Giới hạn đọc 1MB để tránh DoS
+                                file_content = file.read(1024 * 1024)
+                                file.seek(0)  # Reset file pointer
+                                targets_to_check.add(file_content.decode('utf-8', errors='ignore'))
+                            except Exception as e:
+                                logger.warning(f"Could not read file content for inspection: {e}")
+            # --- END NEW TARGETS ---
 
         # 2. XỬ LÝ VÀ KIỂM TRA DỮ LIỆU
         for item in targets_to_check:
@@ -155,24 +261,41 @@ def inspect_request_flask(req):
                 continue
 
             decoded_data, decode_log = deep_decode_data(str(item))
-            
+
             if len(decode_log) > 2:
                 logger.info(f"[DECODE] Rule {rule['id']}: '{item}' -> '{decoded_data}'")
 
-            match = False
-            # Chấp nhận cả REGEX và REGEX_MATCH để tương thích
+            # Prepare targets for inspection (original + parsed structured data)
+            inspection_targets = [decoded_data]
+
+            # Add structured data parsing for JSON/XML content
+            if len(decoded_data) > 0:  # Only parse if there's content
+                parsed_values = parse_structured_data(decoded_data)
+                inspection_targets.extend(parsed_values)
+
+            # Evaluate against all targets
             operator = rule.get('operator')
             value = rule.get('value')
-            
-            if operator == 'CONTAINS' and value in decoded_data:
-                match = True
-            elif operator in ('REGEX', 'REGEX_MATCH') and re.search(value, decoded_data, re.IGNORECASE):
-                match = True
-            
-            if match:
-                logger.warning(f"[MATCH] Rule {rule['id']} ('{rule['description']}') triggered on decoded data: '{decoded_data}'")
-                return f"RULE_ID: {rule['id']}"
-            
+            # Sử dụng trường action của rule: BLOCK / LOG / ALLOW (mặc định BLOCK)
+            action = str(rule.get('action', 'BLOCK')).upper()
+
+            for target in inspection_targets:
+                if evaluate_operator(operator, value, target):
+                    if action == 'BLOCK':
+                        logger.warning(
+                            f"[MATCH][BLOCK] Rule {rule['id']} ('{rule['description']}') "
+                            f"triggered on: '{target}' (operator: {operator})"
+                        )
+                        return f"RULE_ID: {rule['id']}"
+                    elif action in ('LOG', 'ALLOW'):
+                        # Chỉ ghi log, KHÔNG chặn request
+                        logger.info(
+                            f"[MATCH][{action}] Rule {rule['id']} ('{rule['description']}') "
+                            f"matched on: '{target}' (operator: {operator}) - no blocking applied."
+                        )
+                        # Tiếp tục kiểm tra các rule khác để vẫn cho phép rule BLOCK khác hoạt động
+                        break
+
     return None
 
 # --- Routes ---
@@ -223,8 +346,22 @@ def reverse_proxy(path):
 @app.route('/reset-db-management', methods=['POST'])
 def reset_db_management():
     allowed_ips = os.getenv("ADMIN_ALLOWED_IPS", "127.0.0.1,192.168.232.1,::1").split(',')
-    if request.remote_addr not in allowed_ips:
-        logger.warning(f"Unauthorized attempt to reset cache from IP: {request.remote_addr}")
+    client_ip = request.remote_addr
+
+    # Check if client IP is allowed
+    is_allowed = False
+    for allowed_ip in allowed_ips:
+        allowed_ip = allowed_ip.strip()
+        if allowed_ip == client_ip:
+            is_allowed = True
+            break
+        # Support subnet matching (e.g., 172.18.0.0/16)
+        elif '/' in allowed_ip and client_ip.startswith(allowed_ip.split('/')[0].rsplit('.', 1)[0]):
+            is_allowed = True
+            break
+
+    if not is_allowed:
+        logger.warning(f"Unauthorized attempt to reset cache from IP: {client_ip}")
         return jsonify({"status": "error", "message": "Forbidden"}), 403
     try:
         logger.info("Received API command to reload cache from Admin Panel...")
