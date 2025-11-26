@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>IP Blacklist - WAF Admin</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: #f8f9fa; color: #212529; }
+        .container { max-width: 1400px; margin: 2em auto; padding: 2em; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        h1, h2 { border-bottom: 2px solid #dee2e6; padding-bottom: 0.5em; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+        th, td { padding: 0.75em; text-align: left; border-bottom: 1px solid #dee2e6; font-size: 14px; }
+        thead { background-color: #e9ecef; }
+
+        /* Nút Delete đẹp */
+        .btn-delete {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5em;
+            padding: 0.6em 1.2em;
+            background: linear-gradient(135deg, #ff4757 0%, #e84118 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.25), 0 2px 4px rgba(255, 71, 87, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-delete::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-delete:hover::before {
+            left: 100%;
+        }
+
+        .btn-delete:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 20px rgba(255, 71, 87, 0.4), 0 4px 8px rgba(255, 71, 87, 0.25);
+            background: linear-gradient(135deg, #ff5e6c 0%, #ee5a6f 100%);
+        }
+
+        .btn-delete:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 3px 10px rgba(255, 71, 87, 0.3);
+        }
+
+        .btn-delete svg {
+            width: 15px;
+            height: 15px;
+            fill: currentColor;
+        }
+
+        /* IP Address styling */
+        .ip-address {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        /* Violation count badge */
+        .violation-count {
+            background-color: #ffc107;
+            color: #212529;
+            padding: 0.25rem 0.6rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            font-size: 0.75em;
+            display: inline-block;
+        }
+
+        /* Rule ID styling */
+        .rule-id {
+            font-family: 'Courier New', monospace;
+            background-color: #e9ecef;
+            padding: 0.25rem 0.6rem;
+            border-radius: 0.375rem;
+            font-size: 0.75em;
+            color: #495057;
+            font-weight: 600;
+        }
+
+        /* Timestamp styling */
+        .timestamp {
+            font-family: 'Courier New', monospace;
+            color: #6c757d;
+        }
+
+        .flashes { list-style-type: none; padding: 0; margin-top: 1em; }
+        .flashes li { padding: 0.75em; border-radius: 4px; margin-bottom: 0.5em; }
+        .flashes .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flashes .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <p><a href="/">&larr; Back to Dashboard</a></p>
+        <h1>IP Blacklist Management</h1>
+
+        <!-- Statistics Summary -->
+        <p><strong>Total Blacklisted IPs:</strong> {{ total_ips }}</p>
+
+        {% if blacklisted_ips %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Blacklisted At</th>
+                        <th>Triggered Rule</th>
+                        <th>Violations</th>
+                        <th>Notes</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ip in blacklisted_ips %}
+                    <tr>
+                        <td><span class="ip-address">{{ ip.ip_address }}</span></td>
+                        <td><span class="timestamp">{{ ip.blacklisted_at.strftime('%Y-%m-%d %H:%M:%S') if ip.blacklisted_at else 'N/A' }}</span></td>
+                        <td>
+                            {% if ip.triggered_rule_id %}
+                                <span class="rule-id">Rule #{{ ip.triggered_rule_id }}</span>
+                            {% else %}
+                                <span style="color: #6c757d; font-style: italic;">Auto-ban</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="violation-count">{{ ip.violation_count }} violations</span></td>
+                        <td style="font-style: italic; color: #6c757d;">{{ ip.notes or 'No notes' }}</td>
+                        <td>
+                            <form action="{{ url_for('remove_from_blacklist', ip_address=ip.ip_address) }}" method="post" onsubmit="return confirm('Are you sure you want to remove {{ ip.ip_address }} from the blacklist?');" style="display: inline; margin: 0; padding: 0; border: none;">
+                                <button type="submit" class="btn-delete" title="Remove IP from blacklist">
+                                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                    </svg>
+                                    Remove
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="text-align: center; color: #6c757d; font-style: italic; padding: 2em;">
+                <i class="fas fa-shield-check" style="font-size: 2rem; display: block; margin-bottom: 1rem;"></i>
+                No IP addresses are currently blacklisted. The system is running clean.
+            </p>
+        {% endif %}
+    </div>
+</body>
+</html>

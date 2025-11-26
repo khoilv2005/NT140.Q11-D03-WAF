@@ -77,6 +77,7 @@
             color: #495057;
         }
         .category-sql-injection { background-color: #dc3545; }
+        .category-nosql-injection { background-color: #ff6b35; }
         .category-xss { background-color: #fd7e14; }
         .category-bot-protection { background-color: #20c997; }
         .category-path-traversal { background-color: #6f42c1; }
@@ -91,15 +92,15 @@
         <h1>WAF Dashboard</h1>
 
         <div class="stats-grid">
-            <div class="stat-card">
+            <div class="stat-card" onclick="resetFilter()" style="cursor: pointer; transition: all 0.3s ease;" title="Show all requests">
                 <div class="value">{{ stats.total_requests }}</div>
                 <div class="label">📊 Tổng số Requests</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="filterByAction('ALLOWED')" style="cursor: pointer; transition: all 0.3s ease;" title="Show allowed requests only">
                 <div class="value" style="color: #28a745;">{{ stats.allowed_requests }}</div>
                 <div class="label">✅ Requests Được Phép</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="filterByAction('BLOCKED')" style="cursor: pointer; transition: all 0.3s ease;" title="Show blocked requests only">
                 <div class="value" style="color: #dc3545;">{{ stats.blocked_requests }}</div>
                 <div class="label">🚫 Requests Bị Chặn</div>
             </div>
@@ -109,10 +110,10 @@
                     <div class="label">🛡️ Rule Đang Hoạt Động</div>
                 </div>
             </a>
-            <div class="stat-card">
+            <a href="{{ url_for('view_blacklist') }}" class="stat-card" style="text-decoration: none; color: inherit; display: block;">
                 <div class="value" style="color: #6c757d;">{{ stats.blacklisted_ips }}</div>
                 <div class="label">⛔ IP Trong Blacklist</div>
-            </div>
+            </a>
         </div>
 
         <h2>Rules by Category</h2>
@@ -127,7 +128,7 @@
             {% endfor %}
         </div>
 
-        <h2>Activity Log (Last 100 Events)</h2>
+        <h2>Activity Log</h2>
         <table>
             <thead>
                 <tr>
@@ -159,5 +160,247 @@
             </tbody>
         </table>
     </div>
+
+    <script>
+        // Store existing log IDs to track what's new
+        let existingLogIds = new Set();
+        let currentPage = 1;
+        let paginationData = {};
+        let currentFilter = 'ALL'; // ALL, ALLOWED, or BLOCKED
+
+        // Generate unique log ID from log data
+        function getLogId(log) {
+            return `${log.timestamp}-${log.client_ip}-${log.request_method}-${log.request_path}-${log.action_taken}-${log.status_code}`;
+        }
+
+        // Initialize existing log IDs from current page
+        function initializeExistingLogIds() {
+            const tbody = document.querySelector('table tbody');
+            if (tbody) {
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 6) {
+                        const logId = getLogId({
+                            timestamp: cells[0].textContent,
+                            client_ip: cells[1].textContent,
+                            request_method: cells[2].textContent,
+                            request_path: cells[3].textContent,
+                            action_taken: cells[4].textContent.trim(),
+                            status_code: cells[5].textContent
+                        });
+                        existingLogIds.add(logId);
+                    }
+                });
+            }
+        }
+
+        // Professional real-time log updates using AJAX with pagination
+        function loadNewLogs() {
+            let url = `/api/logs/latest?page=${currentPage}&per_page=100`;
+            if (currentFilter !== 'ALL') {
+                url += `&action=${currentFilter}`;
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    updateLogTable(data.logs);
+                    updateStats(data.stats);
+                    updatePaginationControls(data.pagination);
+                    updateFilterIndicator();
+                })
+                .catch(error => {
+                    console.error('Error loading new logs:', error);
+                });
+        }
+
+        // Load specific page
+        function loadPage(page) {
+            currentPage = page;
+            existingLogIds.clear(); // Clear to track new logs on this page
+            loadNewLogs();
+        }
+
+        // Filter logs by action
+        function filterByAction(action) {
+            currentFilter = action;
+            currentPage = 1; // Reset to first page
+            existingLogIds.clear();
+            loadNewLogs();
+        }
+
+        // Reset filter to show all logs
+        function resetFilter() {
+            currentFilter = 'ALL';
+            currentPage = 1; // Reset to first page
+            existingLogIds.clear();
+            loadNewLogs();
+        }
+
+        // Update filter indicator
+        function updateFilterIndicator() {
+            let filterText = '';
+            if (currentFilter === 'ALLOWED') {
+                filterText = ' <span style="color: #28a745; font-weight: bold;">(Allowed Requests Only)</span>';
+            } else if (currentFilter === 'BLOCKED') {
+                filterText = ' <span style="color: #dc3545; font-weight: bold;">(Blocked Requests Only)</span>';
+            }
+
+            const h2 = document.querySelector('h2');
+            if (h2) {
+                h2.innerHTML = 'Activity Log' + filterText;
+            }
+        }
+
+        // Update pagination controls
+        function updatePaginationControls(pagination) {
+            paginationData = pagination;
+            let paginationHtml = '';
+
+            if (pagination.total_pages > 1) {
+                paginationHtml = '<div class="pagination" style="margin: 20px 0; text-align: center;">';
+
+                // Previous button
+                if (pagination.has_prev) {
+                    paginationHtml += `<button onclick="loadPage(${pagination.current_page - 1})" style="margin: 0 5px; padding: 5px 10px; border: 1px solid #ddd; background: #fff; cursor: pointer;">Previous</button>`;
+                }
+
+                // Page numbers
+                const startPage = Math.max(1, pagination.current_page - 2);
+                const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
+
+                for (let i = startPage; i <= endPage; i++) {
+                    const isActive = i === pagination.current_page;
+                    const style = isActive ? 'margin: 0 5px; padding: 5px 10px; border: 1px solid #007bff; background: #007bff; color: white; cursor: pointer;' : 'margin: 0 5px; padding: 5px 10px; border: 1px solid #ddd; background: #fff; cursor: pointer;';
+                    paginationHtml += `<button onclick="loadPage(${i})" style="${style}">${i}</button>`;
+                }
+
+                // Next button
+                if (pagination.has_next) {
+                    paginationHtml += `<button onclick="loadPage(${pagination.current_page + 1})" style="margin: 0 5px; padding: 5px 10px; border: 1px solid #ddd; background: #fff; cursor: pointer;">Next</button>`;
+                }
+
+                paginationHtml += '</div>';
+
+                // Add pagination info
+                paginationHtml += `<div style="text-align: center; color: #6c757d; font-size: 14px;">`;
+                paginationHtml += `Page ${pagination.current_page} of ${pagination.total_pages} (${pagination.total_logs} total logs)`;
+                paginationHtml += `</div>`;
+            }
+
+            // Update pagination container
+            let paginationContainer = document.getElementById('pagination-container');
+            if (!paginationContainer) {
+                paginationContainer = document.createElement('div');
+                paginationContainer.id = 'pagination-container';
+                const table = document.querySelector('table');
+                if (table) {
+                    table.parentNode.insertBefore(paginationContainer, table.nextSibling);
+                }
+            }
+            paginationContainer.innerHTML = paginationHtml;
+        }
+
+        function updateLogTable(newLogs) {
+            const tbody = document.querySelector('table tbody');
+            if (tbody && newLogs && newLogs.length > 0) {
+                // Clear existing logs and rebuild
+                tbody.innerHTML = '';
+
+                // Add logs in correct order (newest first)
+                newLogs.forEach(log => {
+                    const logId = getLogId(log);
+                    const isNewLog = !existingLogIds.has(logId);
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${log.timestamp}</td>
+                        <td>${log.client_ip}</td>
+                        <td>${log.request_method}</td>
+                        <td style="word-break: break-all;">${log.request_path}</td>
+                        <td>
+                            <span class="status-${log.action_taken.toLowerCase()}">
+                                ${log.action_taken}
+                            </span>
+                        </td>
+                        <td>${log.status_code}</td>
+                        <td>${log.triggered_rule_id || 'N/A'}</td>
+                    `;
+
+                    // Just track new logs without highlighting
+                    if (isNewLog) {
+                        existingLogIds.add(logId);
+                    }
+
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        function updateStats(newStats) {
+            if (newStats) {
+                // Update all stat card values
+                const totalElement = document.querySelector('.stat-card:nth-child(1) .value');
+                const allowedElement = document.querySelector('.stat-card:nth-child(2) .value');
+                const blockedElement = document.querySelector('.stat-card:nth-child(3) .value');
+                const rulesElement = document.querySelector('.stat-card:nth-child(4) .value');
+                const blacklistedElement = document.querySelector('.stat-card:nth-child(5) .value');
+
+                if (totalElement) totalElement.textContent = newStats.total_requests;
+                if (allowedElement) allowedElement.textContent = newStats.allowed_requests;
+                if (blockedElement) blockedElement.textContent = newStats.blocked_requests;
+                if (rulesElement) rulesElement.textContent = newStats.active_rules;
+                if (blacklistedElement) blacklistedElement.textContent = newStats.blacklisted_ips;
+            }
+        }
+
+        // Add visual indicator
+        document.addEventListener('DOMContentLoaded', function() {
+            const header = document.querySelector('h1');
+            if (header) {
+                const statusIndicator = document.createElement('span');
+                statusIndicator.innerHTML = ' <span style="font-size: 0.8em; color: #28a745; font-weight: bold;">● Real-time logs</span>';
+                statusIndicator.id = 'refresh-indicator';
+                header.appendChild(statusIndicator);
+
+                // Pulse effect for live indicator
+                setInterval(() => {
+                    statusIndicator.style.opacity = '0.5';
+                    setTimeout(() => {
+                        statusIndicator.style.opacity = '1';
+                    }, 500);
+                }, 2000);
+            }
+
+            // Initialize existing log IDs from the page
+            initializeExistingLogIds();
+
+            // Initial load
+            loadNewLogs();
+
+            // Poll for new logs every 3 seconds (only update current page)
+            setInterval(() => {
+                let url = `/api/logs/latest?page=${currentPage}&per_page=100`;
+                if (currentFilter !== 'ALL') {
+                    url += `&action=${currentFilter}`;
+                }
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Only update if new logs are available
+                        if (data.logs && data.logs.length > 0) {
+                            updateLogTable(data.logs);
+                            updateStats(data.stats);
+                            // Don't update pagination controls during auto-refresh to avoid jumping pages
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading new logs:', error);
+                    });
+            }, 3000);
+        });
+    </script>
 </body>
 </html>

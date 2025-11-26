@@ -2,14 +2,14 @@ import sys
 import os
 import requests
 import json
-from flask import Flask, request, render_template, redirect, url_for, flash
+from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
 
 # Thêm thư mục gốc của dự án vào Python Path để có thể import từ 'shared'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import các thành phần ORM từ file dùng chung
 try:
-    from shared.database import SessionLocal, Rule, IPBlacklist, ActivityLog, logger
+    from shared.database import SessionLocal, Rule, IPBlacklist, ActivityLog, logger, init_database
 except ImportError:
     print("FATAL ERROR: Could not import from 'shared/database.py'.")
     print("Please ensure the file exists and the project structure is correct.")
@@ -51,32 +51,126 @@ def admin_dashboard():
     session = SessionLocal()
     try:
         total_requests = session.query(ActivityLog).count()
-        blocked_requests = session.query(ActivityLog).filter_by(action_taken='BLOCKED').count()
+        blocked_requests = session.query(ActivityLog).filter(ActivityLog.action_taken.in_(['BLOCKED', 'ERROR'])).count()
+        allowed_requests = session.query(ActivityLog).filter_by(action_taken='ALLOWED').count()
         active_rules = session.query(Rule).filter_by(enabled=True).count()
         blacklisted_ips = session.query(IPBlacklist).count()
 
         # Thống kê theo category
         from sqlalchemy import func
         category_stats = session.query(
-            Rule.category, 
+            Rule.category,
             func.count(Rule.id).label('rule_count')
         ).filter_by(enabled=True).group_by(Rule.category).all()
 
         stats = {
             'total_requests': total_requests,
             'blocked_requests': blocked_requests,
-            'allowed_requests': total_requests - blocked_requests,
+            'allowed_requests': allowed_requests,
             'active_rules': active_rules,
             'blacklisted_ips': blacklisted_ips,
             'category_stats': [{'category': cat, 'count': count} for cat, count in category_stats]
         }
-        logs = session.query(ActivityLog).order_by(ActivityLog.timestamp.desc()).limit(100).all()
-        
+
+        # Get pagination parameters for initial load
+        page = int(request.args.get('page', 1))
+        per_page = 100
+        offset = (page - 1) * per_page
+
+        logs = session.query(ActivityLog).order_by(ActivityLog.timestamp.desc()).offset(offset).limit(per_page).all()
+
         return render_template('admin_dashboard.html', stats=stats, logs=logs)
     except Exception as e:
         logger.error(f"Dashboard error: {e}")
         flash('Database connection error. Please try again.', 'error')
         return render_template('admin_dashboard.html', stats={}, logs=[])
+    finally:
+        session.close()
+
+# API Route cho latest logs (AJAX endpoint) với pagination
+@app.route('/api/logs/latest')
+def api_logs_latest():
+    # Giới hạn chỉ cho localhost và IP được phép truy cập
+    if request.remote_addr not in ADMIN_ALLOWED_IPS:
+        return jsonify({'error': 'Access denied'}), 403
+
+    session = SessionLocal()
+    try:
+        # Get pagination and filter parameters
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 100))
+        action_filter = request.args.get('action', 'ALL')  # ALL, ALLOWED, or BLOCKED
+
+        # Build base query
+        base_query = session.query(ActivityLog)
+
+        # Apply action filter if specified
+        if action_filter == 'ALLOWED':
+            base_query = base_query.filter(ActivityLog.action_taken == 'ALLOWED')
+            logger.info(f"Applied filter: {action_filter}")
+        elif action_filter == 'BLOCKED':
+            base_query = base_query.filter(ActivityLog.action_taken.in_(['BLOCKED', 'ERROR']))
+            logger.info(f"Applied filter: {action_filter} (includes BLOCKED and ERROR)")
+
+        # Get total count for pagination (with filter applied)
+        total_logs = base_query.count()
+        logger.info(f"Total logs with filter {action_filter}: {total_logs}")
+
+        # Calculate pagination
+        offset = (page - 1) * per_page
+
+        # Get logs with pagination and filter
+        logs = base_query.order_by(ActivityLog.timestamp.desc()).offset(offset).limit(per_page).all()
+        logger.info(f"Retrieved {len(logs)} logs for page {page}")
+
+        # Get current statistics
+        all_total_requests = session.query(ActivityLog).count()
+        all_blocked_requests = session.query(ActivityLog).filter(ActivityLog.action_taken.in_(['BLOCKED', 'ERROR'])).count()
+        all_allowed_requests = session.query(ActivityLog).filter_by(action_taken='ALLOWED').count()
+        active_rules = session.query(Rule).filter_by(enabled=True).count()
+        blacklisted_ips = session.query(IPBlacklist).count()
+
+        # Convert logs to JSON format
+        logs_data = []
+        for log in logs:
+            logs_data.append({
+                'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S') if log.timestamp else '',
+                'client_ip': log.client_ip or '',
+                'request_method': log.request_method or '',
+                'request_path': log.request_path or '',
+                'action_taken': log.action_taken or '',
+                'status_code': log.status_code or '',
+                'triggered_rule_id': log.triggered_rule_id
+            })
+
+        # Statistics data - always return overall statistics, not filtered
+        stats_data = {
+            'total_requests': all_total_requests,
+            'blocked_requests': all_blocked_requests,
+            'allowed_requests': all_allowed_requests,
+            'active_rules': active_rules,
+            'blacklisted_ips': blacklisted_ips
+        }
+
+        # Pagination info
+        pagination_info = {
+            'current_page': page,
+            'per_page': per_page,
+            'total_logs': total_logs,
+            'total_pages': (total_logs + per_page - 1) // per_page,
+            'has_next': page * per_page < total_logs,
+            'has_prev': page > 1
+        }
+
+        return jsonify({
+            'logs': logs_data,
+            'stats': stats_data,
+            'pagination': pagination_info
+        })
+
+    except Exception as e:
+        logger.error(f"API logs latest error: {e}")
+        return jsonify({'error': 'Database error', 'logs': [], 'stats': {}, 'pagination': {}}), 500
     finally:
         session.close()
 
@@ -243,8 +337,95 @@ def import_rules():
         flash('Invalid file type. Please upload a .json file.', 'error')
 
     return redirect(url_for('manage_rules'))
+
+
+# Route để hiển thị danh sách IP trong blacklist
+@app.route('/blacklist')
+def view_blacklist():
+    if request.remote_addr not in ADMIN_ALLOWED_IPS:
+        return render_template('error_403.html'), 403
+
+    session = SessionLocal()
+    try:
+        # Lấy danh sách IP trong blacklist với thông tin chi tiết
+        blacklisted_ips = session.query(IPBlacklist).order_by(IPBlacklist.timestamp.desc()).all()
+
+        # Thống kê thêm thông tin
+        total_ips = len(blacklisted_ips)
+
+        # Lấy thông tin thống kê về các IP bị chặn
+        ip_stats = []
+        for ip in blacklisted_ips:
+            # Đếm số lần vi phạm của IP này
+            violation_count = session.query(ActivityLog).filter_by(
+                client_ip=ip.ip_address,
+                action_taken='BLOCKED'
+            ).count()
+
+            ip_stats.append({
+                'ip_address': ip.ip_address,
+                'blacklisted_at': ip.timestamp,
+                'triggered_rule_id': ip.triggered_rule_id,
+                'notes': ip.notes,
+                'violation_count': violation_count
+            })
+
+    except Exception as e:
+        logger.error(f"Could not load blacklist: {e}")
+        flash('Failed to load blacklist data.', 'error')
+        ip_stats = []
+        total_ips = 0
+    finally:
+        session.close()
+
+    return render_template('blacklist.html',
+                         blacklisted_ips=ip_stats,
+                         total_ips=total_ips)
+
+
+# Route để xóa IP khỏi blacklist
+@app.route('/remove-from-blacklist/<string:ip_address>', methods=['POST'])
+def remove_from_blacklist(ip_address):
+    if request.remote_addr not in ADMIN_ALLOWED_IPS:
+        return render_template('error_403.html'), 403
+
+    session = SessionLocal()
+    try:
+        ip_to_remove = session.query(IPBlacklist).filter_by(ip_address=ip_address).first()
+        if ip_to_remove:
+            # Xóa IP khỏi blacklist
+            session.delete(ip_to_remove)
+
+            # Xóa tất cả các logs BLOCKED của IP này để reset violation count
+            deleted_logs = session.query(ActivityLog).filter_by(
+                client_ip=ip_address,
+                action_taken='BLOCKED'
+            ).delete()
+
+            session.commit()
+            flash(f'IP {ip_address} has been removed from blacklist and cleared {deleted_logs} violation logs.', 'success')
+
+            # Gửi tín hiệu cho WAF để reload cache
+            notify_waf_to_reset()
+        else:
+            flash(f'IP {ip_address} not found in blacklist.', 'warning')
+    except Exception as e:
+        logger.error(f"Could not remove IP {ip_address} from blacklist: {e}")
+        flash('Failed to remove IP from blacklist.', 'error')
+        session.rollback()
+    finally:
+        session.close()
+
+    return redirect(url_for('view_blacklist'))
+
+
 # --- Main ---
 if __name__ == "__main__":
+    # Initialize database first
+    if not init_database():
+        logger.error("Failed to initialize database. Exiting...")
+        sys.exit(1)
+
     logger.info(f"Admin Panel is running on http://{LISTEN_HOST}:{LISTEN_PORT}")
     logger.info(f"Allowed IPs: {', '.join(ADMIN_ALLOWED_IPS)}")
     app.run(host=LISTEN_HOST, port=LISTEN_PORT)

@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: waf_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wafdb}
+      MYSQL_USER: ${MYSQL_USER:-waf}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wafadmin}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - waf_network
+    # healthcheck:
+#     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+#     timeout: 20s
+#     retries: 10
+
+  # WAF Application
+  waf_app:
+    build:
+      context: .
+      dockerfile: WAF_app/Dockerfile
+    container_name: waf_app
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DATABASE_URL: mysql+mysqlconnector://waf:wafadmin@mysql:3306/wafdb
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      WAF_LISTEN_HOST: ${WAF_LISTEN_HOST:-0.0.0.0}
+      WAF_LISTEN_PORT: ${WAF_LISTEN_PORT:-8080}
+      WAF_BACKEND_ADDRESS: ${WAF_BACKEND_ADDRESS:-http://host.docker.internal:8888}
+      WAF_BLOCK_THRESHOLD: ${WAF_BLOCK_THRESHOLD:-100000}
+      ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-127.0.0.1,192.168.1.1,172.18.0.1,::1}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    networks:
+      - waf_network
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "python main.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Admin Panel
+  admin_panel:
+    build:
+      context: .
+      dockerfile: WAF_admin/Dockerfile
+    container_name: waf_admin
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+mysqlconnector://waf:wafadmin@mysql:3306/wafdb
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ADMIN_LISTEN_HOST: ${ADMIN_LISTEN_HOST:-0.0.0.0}
+      ADMIN_LISTEN_PORT: ${ADMIN_LISTEN_PORT:-5000}
+      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY}
+      ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-127.0.0.1,192.168.1.1,172.18.0.1,::1}
+      WAF_RESET_URL: ${WAF_RESET_URL:-http://waf_app:8080/reset-db-management}
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mysql
+      - waf_app
+    networks:
+      - waf_network
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "python main.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend Service (example target)
+  backend:
+    image: httpd:2.4
+    container_name: waf_backend
+    restart: unless-stopped
+    ports:
+      - "99:80"
+    networks:
+      - waf_network
+    volumes:
+      - ./backend_content:/usr/local/apache2/htdocs/
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  waf_network:
+    driver: bridge

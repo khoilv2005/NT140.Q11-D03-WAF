@@ -24,13 +24,13 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Import models and Base từ file models.py
 from .models import Base, Rule, IPBlacklist, ActivityLog
 
-# Tự động tạo bảng nếu chưa tồn tại
-try:
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created/verified successfully")
-except Exception as e:
-    logger.error(f"Error creating database tables: {e}")
-    raise
-
-# Tự động tạo bảng khi import module
-Base.metadata.create_all(bind=engine)
+# Hàm khởi tạo database (chạy khi cần)
+def init_database():
+    """Initialize database tables"""
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created/verified successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Error creating database tables: {e}")
+        return False

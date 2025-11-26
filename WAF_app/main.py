@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import các thành phần ORM từ file dùng chung
 try:
-    from shared.database import SessionLocal, Rule, IPBlacklist, ActivityLog, logger
+    from shared.database import SessionLocal, Rule, IPBlacklist, ActivityLog, logger, init_database
 except ImportError:
     print("FATAL ERROR: Could not import from 'shared/database.py'.")
     print("Please ensure the file exists and the project structure is correct.")
@@ -32,7 +32,7 @@ load_dotenv()
 BACKEND_ADDRESS = os.getenv("WAF_BACKEND_ADDRESS", "http://127.0.0.1:80")
 LISTEN_HOST = os.getenv("WAF_LISTEN_HOST", "0.0.0.0")
 LISTEN_PORT = int(os.getenv("WAF_LISTEN_PORT", "8080"))
-BLOCK_THRESHOLD = int(os.getenv("WAF_BLOCK_THRESHOLD", "3"))  # Ngưỡng vi phạm để cấm IP
+BLOCK_THRESHOLD = int(os.getenv("WAF_BLOCK_THRESHOLD", "100000"))  # Ngưỡng vi phạm để cấm IP
 
 app = Flask(__name__)
 
@@ -237,6 +237,11 @@ def reset_db_management():
 
 # --- Main ---
 if __name__ == "__main__":
+    # Initialize database first
+    if not init_database():
+        logger.error("Failed to initialize database. Exiting...")
+        sys.exit(1)
+
     load_cache_from_db()
     logger.info(f"WAF Service is running on http://{LISTEN_HOST}:{LISTEN_PORT}")
     app.run(host=LISTEN_HOST, port=LISTEN_PORT)
