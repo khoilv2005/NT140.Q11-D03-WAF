@@ -83,17 +83,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # Backend Service (example target)
-  backend:
-    image: httpd:2.4
-    container_name: waf_backend
-    restart: unless-stopped
-    ports:
-      - "99:80"
-    networks:
-      - waf_network
-    volumes:
-      - ./backend_content:/usr/local/apache2/htdocs/
 
 volumes:
   mysql_data:

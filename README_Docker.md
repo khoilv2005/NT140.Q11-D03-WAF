@@ -43,7 +43,7 @@ docker-compose down -v
 Các biến môi trường có thể được thay đổi trong `docker-compose.yml`:
 
 **WAF App:**
-- `DATABASE_URL`: Chuỗi kết nối database
+- `DATABASE_URL`: Chuỗi kết nối database (bắt buộc đặt qua biến môi trường/.env)
 - `WAF_LISTEN_HOST`: Host lắng nghe (mặc định: 0.0.0.0)
 - `WAF_LISTEN_PORT`: Port WAF (mặc định: 8080)
 - `WAF_BACKEND_ADDRESS`: Địa chỉ backend (mặc định: http://backend:99)

@@ -591,7 +591,7 @@
     "description": "Block suspicious Cookie Names",
     "target": "COOKIES_NAMES",
     "operator": "REGEX",
-    "value": "(?i)(admin|root|test|debug|phpsessid|session)",
+    "value": "(?i)(admin|root|test|debug|cookiebomb|sessionid|user_id)",
     "action": "BLOCK",
     "category": "Cookie Attack",
     "severity": "MEDIUM"
@@ -748,6 +748,83 @@
     "target": "URL_QUERY|ARGS",
     "operator": "REGEX_MATCH",
     "value": "(?i)alert\\s*\\(|confirm\\s*\\(|prompt\\s*\\(|eval\\s*\\(|document\\[\"cookie\"\\]|javascript:setInterval\\(",
+    "action": "BLOCK"
+  },
+  {
+    "id": 9104,
+    "enabled": true,
+    "description": "Script tag detection in URL path and query",
+    "category": "XSS",
+    "severity": "CRITICAL",
+    "target": "URL_PATH|URL_QUERY|ARGS|BODY",
+    "operator": "REGEX_MATCH",
+    "value": "(?i)<\\s*script[^>]*>.*<\\s*/\\s*script\\s*>|<\\s*script[^>]*src\\s*=\\s*[\"'][^\"']+[\"'][^>]*>",
+    "action": "BLOCK"
+  },
+  {
+    "id": 9105,
+    "enabled": true,
+    "description": "XSS event handlers and JavaScript functions detection",
+    "category": "XSS",
+    "severity": "CRITICAL",
+    "target": "URL_PATH|URL_QUERY|ARGS|BODY",
+    "operator": "REGEX_MATCH",
+    "value": "(?i)(javascript:|onload=|onerror=|onmouseover=|onclick=|onfocus=|onblur=|onchange=|onsubmit=|onkeydown=|onkeyup=|onkeypress=|alert\\s*\\(|confirm\\s*\\(|prompt\\s*\\(|eval\\s*\\(|document\\.[\"']cookie[\"'])",
+    "action": "BLOCK"
+  },
+  {
+    "id": 9106,
+    "enabled": true,
+    "description": "Unicode evasion detection for XSS",
+    "category": "XSS",
+    "severity": "CRITICAL",
+    "target": "URL_PATH|URL_QUERY|ARGS|BODY",
+    "operator": "REGEX_MATCH",
+    "value": "(?i)(<x[>]|on\\w+x\\w+=|alertx\\(|confirmx\\(|promptx\\(|javascriptx:)",
+    "action": "BLOCK"
+  },
+  {
+    "id": 9107,
+    "enabled": true,
+    "description": "JavaScript function call evasion",
+    "category": "XSS",
+    "severity": "CRITICAL",
+    "target": "URL_PATH|URL_QUERY|ARGS|BODY",
+    "operator": "REGEX_MATCH",
+    "value": "(?i)(alert\\.apply|alert\\.call|confirm\\.apply|confirm\\.call|prompt\\.apply|prompt\\.call|eval\\.(apply|call))",
+    "action": "BLOCK"
+  },
+  {
+    "id": 9108,
+    "enabled": true,
+    "description": "Template injection detection",
+    "category": "SSTI",
+    "severity": "CRITICAL",
+    "target": "URL_PATH|URL_QUERY|ARGS|BODY",
+    "operator": "REGEX_MATCH",
+    "value": "(?i)(\\{\\{.*\\}\\}|#\\{.*\\}|\\$\\{.*\\}|<#.*>|\\{\\%.*\\%\\})",
+    "action": "BLOCK"
+  },
+  {
+    "id": 9109,
+    "enabled": true,
+    "description": "Server-Side Includes (SSI) detection",
+    "category": "SSI",
+    "severity": "CRITICAL",
+    "target": "URL_PATH|URL_QUERY|ARGS|BODY",
+    "operator": "REGEX_MATCH",
+    "value": "(?i)(<!--#exec|<!--#include|<!--#echo|<!--#config|<!--#flastmod|<!--#fsize)",
+    "action": "BLOCK"
+  },
+  {
+    "id": 9110,
+    "enabled": true,
+    "description": "SSTI template utility execution",
+    "category": "SSTI",
+    "severity": "CRITICAL",
+    "target": "URL_PATH|URL_QUERY|ARGS|BODY",
+    "operator": "REGEX_MATCH",
+    "value": "(?i)(assign.*execute|template.*utility.*execute|freemarker.*template.*utility)",
     "action": "BLOCK"
   }
 ]
