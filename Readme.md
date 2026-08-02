@@ -1,4 +1,4 @@
-# 🛡️ WebGuard: An Explainable Hybrid WAF using Attention-based CNN-BiLSTM for Evasive Attack Detection
+# WebGuard: An Explainable Hybrid WAF using Attention-based CNN-BiLSTM for Evasive Attack Detection
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com)
@@ -12,11 +12,11 @@
 
 **Le Van Khoi:** WebGuard architecture, hybrid rule/ML detection, explainability integration, and security hardening.
 
-🌐 **[Tiếng Việt](README.vi.md)**
+**[Tiếng Việt](README.vi.md)**
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 - [Features](#-features)
 - [System Architecture](#-system-architecture)
@@ -30,30 +30,30 @@
 
 ---
 
-## ✨ Features
+## Features
 
 ### Rule-based Detection
-- ✅ **SQL Injection** - Detect common SQL injection patterns
-- ✅ **XSS (Cross-Site Scripting)** - Block malicious scripts
-- ✅ **Path Traversal** - Prevent unauthorized directory access
-- ✅ **Command Injection** - Detect shell command injection
-- ✅ **IP Blacklist** - Auto-block IPs with multiple violations
+- **SQL Injection** - Detect common SQL injection patterns
+- **XSS (Cross-Site Scripting)** - Block malicious scripts
+- **Path Traversal** - Prevent unauthorized directory access
+- **Command Injection** - Detect shell command injection
+- **IP Blacklist** - Auto-block IPs with multiple violations
 
 ### Deep Learning Detection
-- 🤖 **Deep Learning Model** - PyTorch model with Attention mechanism
-- 🚀 **ONNX Runtime** - Fast inference with ONNX optimization  
-- 🔍 **LIME XAI** - Explain attack detection decisions
-- 📊 **Character-level Tokenization** - Detect obfuscated payloads
+- **Deep Learning Model** - PyTorch model with Attention mechanism
+- **ONNX Runtime** - Fast inference with ONNX optimization
+- **LIME XAI** - Explain attack detection decisions
+- **Character-level Tokenization** - Detect obfuscated payloads
 
 ### Admin Panel
-- 📈 **Dashboard** - Real-time activity monitoring
-- 📝 **Rule Management** - Add/Edit/Delete rules
-- 🚫 **IP Blacklist** - Manage blocked IP addresses
-- 📄 **Activity Logs** - View request history with pagination
+- **Dashboard** - Real-time activity monitoring
+- **Rule Management** - Add/Edit/Delete rules
+- **IP Blacklist** - Manage blocked IP addresses
+- **Activity Logs** - View request history with pagination
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -77,7 +77,7 @@
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### Requirements
 - **Docker** & **Docker Compose**
@@ -117,7 +117,7 @@ docker-compose logs -f waf_admin
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### `.env` File
 
@@ -153,7 +153,7 @@ WAF_ML_LIME_ENABLED=false
 
 ---
 
-## 📖 Usage
+## Usage
 
 ### Access Services
 
@@ -181,7 +181,7 @@ curl "http://localhost:8080/../../../etc/passwd"
 
 ---
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### WAF Application (Port 8080)
 
@@ -208,7 +208,7 @@ curl "http://localhost:8080/../../../etc/passwd"
 
 ---
 
-## 🖥️ Admin Panel
+## Admin Panel
 
 ### Dashboard
 - View overall statistics (total requests, blocked, allowed)
@@ -227,7 +227,7 @@ curl "http://localhost:8080/../../../etc/passwd"
 
 ---
 
-## 🤖 Deep Learning
+## Deep Learning
 
 ### Overview
 
@@ -376,30 +376,30 @@ ML_FORCE_ONNX=true
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 NT140.Q11-D03-WAF/
-├── 📂 WAF_app/                   # WAF Application
+├── WAF_app/                      # WAF Application
 │   ├── main.py                   # FastAPI reverse proxy
 │   ├── ml_predictor.py           # ML inference engine
 │   ├── decoder.py                # URL/HTML decoder
 │   ├── Dockerfile
-│   └── 📂 models/                # ML models
+│   └── models/                   # ML models
 │       ├── waf_model.onnx
 │       └── tokenizer_word_index.json
 │
-├── 📂 WAF_admin/                 # Admin Panel
+├── WAF_admin/                    # Admin Panel
 │   ├── main.py                   # Flask application
 │   ├── Dockerfile
-│   └── 📂 templates/             # HTML templates
+│   └── templates/                # HTML templates
 │       └── admin_dashboard.html
 │
-├── 📂 shared/                    # Shared code
+├── shared/                       # Shared code
 │   ├── models.py                 # SQLAlchemy models
 │   └── database.py               # Database connection
 │
-├── 📂 rules/                     # WAF rules
+├── rules/                        # WAF rules
 │   └── complete_rules_import.json
 │
 ├── docker-compose.yml            # Docker Compose config
@@ -410,7 +410,7 @@ NT140.Q11-D03-WAF/
 
 ---
 
-## 📊 Database Schema
+## Database Schema
 
 ### Tables
 
@@ -438,7 +438,7 @@ NT140.Q11-D03-WAF/
 
 ---
 
-## 🔧 Docker Commands
+## Docker Commands
 
 ```bash
 # Start services
@@ -461,19 +461,19 @@ docker exec -it waf_mysql mysql -u waf -p
 
 ---
 
-## 📝 License
+## License
 
 MIT License - See [LICENSE](LICENSE) file for details.
 
 ---
 
-## 👥 Contributors
+## Contributors
 
 - **NT140.Q11 - Group 6** - University of Information Technology (UIT)
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
 - [Flask](https://flask.palletsprojects.com/) - Lightweight Python web framework

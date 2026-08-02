@@ -1,4 +1,4 @@
-# 🛡️ WebGuard: An Explainable Hybrid WAF using Attention-based CNN-BiLSTM for Evasive Attack Detection
+# WebGuard: An Explainable Hybrid WAF using Attention-based CNN-BiLSTM for Evasive Attack Detection
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com)
@@ -8,11 +8,11 @@
 
 **WebGuard** là hệ thống **Web Application Firewall (WAF)** kết hợp rule-based detection và **Deep Learning** (Attention-based CNN-BiLSTM) để phát hiện các cuộc tấn công web, bao gồm cả các tấn công evasive. Hệ thống tích hợp **LIME XAI** để giải thích các quyết định của model.
 
-🌐 **[English Version](README.md)**
+**[English Version](README.md)**
 
 ---
 
-## 📑 Mục lục
+## Mục lục
 
 - [Tính năng](#-tính-năng)
 - [Kiến trúc hệ thống](#-kiến-trúc-hệ-thống)
@@ -26,30 +26,30 @@
 
 ---
 
-## ✨ Tính năng
+## Tính năng
 
 ### Rule-based Detection
-- ✅ **SQL Injection** - Phát hiện các mẫu SQL injection phổ biến
-- ✅ **XSS (Cross-Site Scripting)** - Ngăn chặn các script độc hại
-- ✅ **Path Traversal** - Chặn truy cập thư mục trái phép
-- ✅ **Command Injection** - Phát hiện lệnh shell injection
-- ✅ **IP Blacklist** - Tự động chặn IP vi phạm nhiều lần
+- **SQL Injection** - Phát hiện các mẫu SQL injection phổ biến
+- **XSS (Cross-Site Scripting)** - Ngăn chặn các script độc hại
+- **Path Traversal** - Chặn truy cập thư mục trái phép
+- **Command Injection** - Phát hiện lệnh shell injection
+- **IP Blacklist** - Tự động chặn IP vi phạm nhiều lần
 
 ### Deep Learning Detection
-- 🤖 **Deep Learning Model** - Mô hình PyTorch với Attention mechanism
-- 🚀 **ONNX Runtime** - Inference nhanh với ONNX optimization  
-- 🔍 **LIME XAI** - Giải thích lý do phát hiện tấn công
-- 📊 **Character-level Tokenization** - Phát hiện payload ẩn
+- **Deep Learning Model** - Mô hình PyTorch với Attention mechanism
+- **ONNX Runtime** - Inference nhanh với ONNX optimization
+- **LIME XAI** - Giải thích lý do phát hiện tấn công
+- **Character-level Tokenization** - Phát hiện payload ẩn
 
 ### Admin Panel
-- 📈 **Dashboard** - Giám sát real-time các hoạt động
-- 📝 **Rule Management** - Thêm/Sửa/Xóa rules
-- 🚫 **IP Blacklist** - Quản lý danh sách IP bị chặn
-- 📄 **Activity Logs** - Xem lịch sử các request với pagination
+- **Dashboard** - Giám sát real-time các hoạt động
+- **Rule Management** - Thêm/Sửa/Xóa rules
+- **IP Blacklist** - Quản lý danh sách IP bị chặn
+- **Activity Logs** - Xem lịch sử các request với pagination
 
 ---
 
-## 🏗️ Kiến trúc hệ thống
+## Kiến trúc hệ thống
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -73,7 +73,7 @@
 
 ---
 
-## 🚀 Cài đặt
+## Cài đặt
 
 ### Yêu cầu
 - **Docker** & **Docker Compose**
@@ -113,7 +113,7 @@ docker-compose logs -f waf_admin
 
 ---
 
-## ⚙️ Cấu hình
+## Cấu hình
 
 ### File `.env`
 
@@ -149,7 +149,7 @@ WAF_ML_LIME_ENABLED=false
 
 ---
 
-## 📖 Sử dụng
+## Sử dụng
 
 ### Truy cập các services
 
@@ -177,7 +177,7 @@ curl "http://localhost:8080/../../../etc/passwd"
 
 ---
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### WAF Application (Port 8080)
 
@@ -204,7 +204,7 @@ curl "http://localhost:8080/../../../etc/passwd"
 
 ---
 
-## 🖥️ Admin Panel
+## Admin Panel
 
 ### Dashboard
 - Xem thống kê tổng quan (tổng requests, blocked, allowed)
@@ -223,7 +223,7 @@ curl "http://localhost:8080/../../../etc/passwd"
 
 ---
 
-## 🤖 Deep Learning
+## Deep Learning
 
 ### Tổng quan
 
@@ -372,30 +372,30 @@ ML_FORCE_ONNX=true
 
 ---
 
-## 📁 Cấu trúc dự án
+## Cấu trúc dự án
 
 ```
 NT140.Q11-D03-WAF/
-├── 📂 WAF_app/                   # WAF Application
+├── WAF_app/                      # WAF Application
 │   ├── main.py                   # FastAPI reverse proxy
 │   ├── ml_predictor.py           # ML inference engine
 │   ├── decoder.py                # URL/HTML decoder
 │   ├── Dockerfile
-│   └── 📂 models/                # ML models
+│   └── models/                   # ML models
 │       ├── waf_model.onnx
 │       └── tokenizer_word_index.json
 │
-├── 📂 WAF_admin/                 # Admin Panel
+├── WAF_admin/                    # Admin Panel
 │   ├── main.py                   # Flask application
 │   ├── Dockerfile
-│   └── 📂 templates/             # HTML templates
+│   └── templates/                # HTML templates
 │       └── admin_dashboard.html
 │
-├── 📂 shared/                    # Shared code
+├── shared/                       # Shared code
 │   ├── models.py                 # SQLAlchemy models
 │   └── database.py               # Database connection
 │
-├── 📂 rules/                     # WAF rules
+├── rules/                        # WAF rules
 │   └── complete_rules_import.json
 │
 ├── docker-compose.yml            # Docker Compose config
@@ -406,7 +406,7 @@ NT140.Q11-D03-WAF/
 
 ---
 
-## 📊 Database Schema
+## Database Schema
 
 ### Tables
 
@@ -434,7 +434,7 @@ NT140.Q11-D03-WAF/
 
 ---
 
-## 🔧 Docker Commands
+## Docker Commands
 
 ```bash
 # Chạy services
@@ -457,19 +457,19 @@ docker exec -it waf_mysql mysql -u waf -p
 
 ---
 
-## 📝 License
+## License
 
 MIT License - Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
 
 ---
 
-## 👥 Contributors
+## Contributors
 
 - **NT140.Q11 - Nhóm 6** - University of Information Technology (UIT)
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
 - [Flask](https://flask.palletsprojects.com/) - Lightweight Python web framework
