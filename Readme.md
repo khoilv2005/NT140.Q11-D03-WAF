@@ -87,7 +87,7 @@
 
 ```bash
 git clone <repository-url>
-cd NT140.Q11-D03-WAF
+cd An-Explainable-Hybrid-WAF
 ```
 
 ### Step 2: Configure environment
@@ -379,7 +379,7 @@ ML_FORCE_ONNX=true
 ## Project Structure
 
 ```
-NT140.Q11-D03-WAF/
+An-Explainable-Hybrid-WAF/
 ├── WAF_app/                      # WAF Application
 │   ├── main.py                   # FastAPI reverse proxy
 │   ├── ml_predictor.py           # ML inference engine
@@ -469,7 +469,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 ## Contributors
 
-- **NT140.Q11 - Group 6** - University of Information Technology (UIT)
+- **Le Van Khoi** (khoakim09@gmail.com / 23520770@gmail.com)
 
 ---
 

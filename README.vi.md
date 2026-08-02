@@ -83,7 +83,7 @@
 
 ```bash
 git clone <repository-url>
-cd NT140.Q11-D03-WAF
+cd An-Explainable-Hybrid-WAF
 ```
 
 ### Bước 2: Cấu hình environment
@@ -375,7 +375,7 @@ ML_FORCE_ONNX=true
 ## Cấu trúc dự án
 
 ```
-NT140.Q11-D03-WAF/
+An-Explainable-Hybrid-WAF/
 ├── WAF_app/                      # WAF Application
 │   ├── main.py                   # FastAPI reverse proxy
 │   ├── ml_predictor.py           # ML inference engine
@@ -465,7 +465,7 @@ MIT License - Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
 
 ## Contributors
 
-- **NT140.Q11 - Nhóm 6** - University of Information Technology (UIT)
+- **Le Van Khoi** (khoakim09@gmail.com / 23520770@gmail.com)
 
 ---
 
