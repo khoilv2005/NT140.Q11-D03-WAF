@@ -7,10 +7,10 @@ services:
     container_name: waf_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-wafdb}
       MYSQL_USER: ${MYSQL_USER:-waf}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wafadmin}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set in .env}
     ports:
       - "3306:3306"
     volumes:
@@ -89,7 +89,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL}
       ADMIN_LISTEN_HOST: ${ADMIN_LISTEN_HOST}
       ADMIN_LISTEN_PORT: ${ADMIN_LISTEN_PORT}
-      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY}
+      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY:?ADMIN_SECRET_KEY must be set in .env}
       ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS}
       WAF_RESET_URL: ${WAF_RESET_URL}
     ports:

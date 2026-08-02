@@ -119,10 +119,10 @@ docker-compose logs -f waf_admin
 
 | Biến | Mô tả | Giá trị mặc định |
 |------|-------|------------------|
-| `MYSQL_ROOT_PASSWORD` | Mật khẩu root MySQL | `rootpassword` |
+| `MYSQL_ROOT_PASSWORD` | Mật khẩu root MySQL | Phải được đặt trong `.env` |
 | `MYSQL_DATABASE` | Tên database | `wafdb` |
 | `MYSQL_USER` | Username MySQL | `waf` |
-| `MYSQL_PASSWORD` | Password MySQL | `wafadmin` |
+| `MYSQL_PASSWORD` | Password MySQL | Phải được đặt trong `.env` |
 | `WAF_LISTEN_PORT` | Port WAF lắng nghe | `8080` |
 | `WAF_BACKEND_ADDRESS` | Địa chỉ backend app | `http://host.docker.internal:8888` |
 | `WAF_BLOCK_THRESHOLD` | Ngưỡng block IP | `100000` |
@@ -130,7 +130,7 @@ docker-compose logs -f waf_admin
 | `WAF_ML_CONFIDENCE_THRESHOLD` | Ngưỡng tin cậy ML | `0.5` |
 | `WAF_ML_LIME_ENABLED` | Bật/tắt LIME XAI | `false` |
 | `ADMIN_LISTEN_PORT` | Port Admin Panel | `5000` |
-| `ADMIN_SECRET_KEY` | Secret key Flask | `super_secret_key...` |
+| `ADMIN_SECRET_KEY` | Secret key Flask | Phải đặt giá trị ngẫu nhiên |
 | `ADMIN_ALLOWED_IPS` | Danh sách IP được phép | `127.0.0.1,::1` |
 
 ### Cấu hình ML

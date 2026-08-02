@@ -26,7 +26,10 @@ LISTEN_HOST = os.getenv("ADMIN_LISTEN_HOST", "0.0.0.0")
 LISTEN_PORT = int(os.getenv("ADMIN_LISTEN_PORT", "5000"))
 
 app = Flask(__name__)
-app.secret_key = os.getenv("ADMIN_SECRET_KEY", "super_secret_key_123") 
+ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY")
+if not ADMIN_SECRET_KEY:
+    raise RuntimeError("ADMIN_SECRET_KEY must be set to a non-empty value")
+app.secret_key = ADMIN_SECRET_KEY
 # --- Các hàm tiện ích ---
 def notify_waf_to_reset():
     """Gửi một request đến WAF để yêu cầu nó tải lại rule."""
