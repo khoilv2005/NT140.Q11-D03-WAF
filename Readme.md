@@ -8,6 +8,10 @@
 
 **WebGuard** is a **Web Application Firewall (WAF)** that combines rule-based detection with **Deep Learning** (Attention-based CNN-BiLSTM) to detect web attacks, including evasive attacks. The system integrates **LIME XAI** for explainable decision-making.
 
+### Project Contribution
+
+**Le Van Khoi:** WebGuard architecture, hybrid rule/ML detection, explainability integration, and security hardening.
+
 🌐 **[Tiếng Việt](README.vi.md)**
 
 ---
@@ -119,10 +123,10 @@ docker-compose logs -f waf_admin
 
 | Variable | Description | Default Value |
 |----------|-------------|---------------|
-| `MYSQL_ROOT_PASSWORD` | MySQL root password | `rootpassword` |
+| `MYSQL_ROOT_PASSWORD` | MySQL root password | Must be set in `.env` |
 | `MYSQL_DATABASE` | Database name | `wafdb` |
 | `MYSQL_USER` | MySQL username | `waf` |
-| `MYSQL_PASSWORD` | MySQL password | `wafadmin` |
+| `MYSQL_PASSWORD` | MySQL password | Must be set in `.env` |
 | `WAF_LISTEN_PORT` | WAF listening port | `8080` |
 | `WAF_BACKEND_ADDRESS` | Backend app address | `http://host.docker.internal:8888` |
 | `WAF_BLOCK_THRESHOLD` | IP block threshold | `100000` |
@@ -130,7 +134,7 @@ docker-compose logs -f waf_admin
 | `WAF_ML_CONFIDENCE_THRESHOLD` | ML confidence threshold | `0.5` |
 | `WAF_ML_LIME_ENABLED` | Enable/disable LIME XAI | `false` |
 | `ADMIN_LISTEN_PORT` | Admin Panel port | `5000` |
-| `ADMIN_SECRET_KEY` | Flask secret key | `super_secret_key...` |
+| `ADMIN_SECRET_KEY` | Flask secret key | Must be set to a random value |
 | `ADMIN_ALLOWED_IPS` | Allowed IP list | `127.0.0.1,::1` |
 
 ### ML Configuration
